@@ -1,50 +1,77 @@
 # Hardware CRSF-Router 8
 
-Basis ist ein **Waveshare RP2350-Zero** (ca. 23,5 × 18 mm, USB-C, RGB-LED an GP16, BOOT- und RESET-Taste). Es gibt noch keine eigene Platine, für den ersten Test reicht eine Lochrasterplatine mit Steckern.
+Basis ist ein **Waveshare RP2350-Zero** (ca. 23,5 × 18 mm, USB-C, RGB-LED an GP16, BOOT- und RESET-Taste), gesteckt auf eine Verteilerplatine. Jeder Teilnehmer bekommt ein 4-poliges Kabel mit GND, +V und den beiden Signalen, wie bei einem Servoverteiler.
 
-## Pinbelegung
+> Stand v0.1 (03.11.2026): Schaltplan und Platine mit allen Bauteilen platziert, **noch nicht geroutet**. Footprint des RP2350-Zero vor der Bestellung am echten Board gegenprüfen.
 
-```
-                    ___(_____)___
-              5V  1 |   *USB C*   | 23 GP0  Uplink TX  → RX Empfänger
-             GND  2 |             | 22 GP1  Uplink RX  ← TX Empfänger
-            3V3   3 |             | 21 GP2  Port 1 TX
-   (frei)  GP29   4 |             | 20 GP3  Port 1 RX
-   (frei)  GP28   5 |             | 19 GP4  Port 2 TX
-   (frei)  GP27   6 |             | 18 GP5  Port 2 RX
- Spannung  GP26   7 |             | 17 GP6  Port 3 TX
- Port 7 RX GP15   8 |             | 16 GP7  Port 3 RX
- Port 7 TX GP14   9 |__|_|_|_|_|__| 15 GP8  Port 4 TX
-                     10 11 12 13 14
-```
+![Platine von oben](vorschau-platine.png)
 
-Untere Kante (Pin 10–14, von links): GP13 Port 6 RX, GP12 Port 6 TX, GP11 Port 5 RX, GP10 Port 5 TX, GP9 Port 4 RX.
+## KiCad-Projekt
 
-## Verdrahtung je Port
-
-| Router | Gerät |
+| Datei | Inhalt |
 |---|---|
-| TX | RX (CRSF-Eingang) |
-| RX | TX (Telemetrie-Ausgang) |
-| GND | GND |
-| 5 V | 5 V (nur wenn das Gerät darüber versorgt wird) |
+| `RC-CRSF-Router-RP2350.kicad_pro/.kicad_sch/.kicad_pcb` | Projekt, Schaltplan (A3), Platine 64 × 38 mm, 2 Lagen |
+| `RC-CRSF-Router-RP2350_Schaltplan.pdf` | Schaltplan als PDF |
+| `Router8.kicad_sym`, `footprints.pretty/` | Projektbibliothek: Symbol und Footprint RP2350-Zero, Stiftleiste 1×4 für die Schiene |
+| `sym-lib-table`, `fp-lib-table` | binden die Projektbibliothek ein |
 
-Alle Pins sind **3,3 V**. ELRS-Empfänger und die ESP32-Module arbeiten auch mit 3,3 V, das passt direkt. Geräte mit 5-V-Signalen brauchen einen Pegelwandler.
+Erstellt im KiCad-7-Format, KiCad 9 öffnet und aktualisiert es beim ersten Speichern. Netzklassen: **Power** (GND, VBUS, +5V, +V der Ports) 1,0 mm, Rest 0,3 mm. Unterseite ist eine GND-Fläche.
 
-**Ziege-One-Multiswitche ohne eigenen Weiterleitungs-Port** hängen einfach jeweils an einem eigenen Port. Genau dafür sind die 7 Ports gedacht.
+**Nach dem Öffnen:** Routing (z. B. Freerouting), dann DRC. Der DRC meldet vor dem Routing nur offene Verbindungen und ein paar Hinweise zum Bestückungsdruck, keine Abstands- oder Hoffehler.
 
-**S.Port** ist in v0.1.0 noch nicht vorgesehen (alle Ports sprechen CRSF).
+## Steckerleiste (2,54 mm, gerade)
+
+| Reihe | Bedeutung |
+|---|---|
+| U (J1) | Uplink zum Empfänger, +V direkt am Bus (ohne Sicherung) |
+| 1–7 (J2–J8) | Port 1–7, +V über Lötbrücke JP und Sicherung F |
+
+Spalten von links: **G** = GND (eckiges Pad), **V** = +BEC, **R** = Router sendet, an RX des Geräts, **T** = Router empfängt, vom TX des Geräts. Damit wird jedes Kabel gerade gesteckt.
+
+## Pinbelegung RP2350-Zero
+
+| Port | TX | RX |
+|---|---|---|
+| Uplink | GP0 | GP1 |
+| Port 1 | GP2 | GP3 |
+| Port 2 | GP4 | GP5 |
+| Port 3 | GP6 | GP7 |
+| Port 4 | GP8 | GP9 |
+| Port 5 | GP10 | GP11 |
+| Port 6 | GP12 | GP13 |
+| Port 7 | GP14 | GP15 |
+| Spannung | GP26 (Teiler 33k/10k) | |
+
+## Stückliste
+
+| Ref | Anzahl | Wert | Gehäuse | Hinweis |
+|---|---|---|---|---|
+| U1 | 1 | Waveshare RP2350-Zero | Buchsenleisten 2× 1×9 + 1× 1×5, 2,54 mm | gesteckt |
+| U2 | 1 | MCP1703A-5002E/CB | SOT-23 | 5-V-LDO, Eingang bis 16 V |
+| D1 | 1 | B5819WS (Schottky) | SOD-323 | kein Rückstrom bei USB |
+| D2 | 1 | SMAJ12CA (TVS) | SMA | 12 V Sperrspannung |
+| C1 | 1 | 220 µF / 16 V | Elko SMD 6,3 × 7,7 | |
+| C2, C3 | 2 | 1 µF / 25 V | 0805 | LDO Ein-/Ausgang |
+| C4 | 1 | 100 nF | 0805 | Messeingang |
+| R1–R16 | 16 | 220 Ω | 0805 | Schutz der Signalleitungen |
+| R17 | 1 | 33 kΩ | 0805 | Spannungsteiler |
+| R18 | 1 | 10 kΩ | 0805 | Spannungsteiler |
+| F1–F7 | 7 | PTC 0,5 A / 15 V, z. B. Littelfuse 1206L050/15 | 1206 | für Soundmodul ggf. 1,1 A |
+| JP1–JP7 | 7 | Lötbrücke, geschlossen | Pads | auftrennen = Port ohne +V |
+| J1–J8 | 8 | Stiftleiste 1×4 | 2,54 mm, gerade | |
+| J9 | 1 | Stiftleiste 1×2 | 2,54 mm, gerade | BEC IN, links −, rechts + |
+| H1–H4 | 4 | Bohrung M2 | | |
+
+Werte aus dem Datenblatt-Gedächtnis, vor der Bestellung in den Datenblättern prüfen (besonders MCP1703A-Pinbelegung SOT-23A: 1 GND, 2 VOUT, 3 VIN).
 
 ## Versorgung
 
-Der RP2350-Zero wird über den 5-V-Pin vom Empfänger/BEC versorgt (eigener Regler auf dem Board, ca. 30 mA). Die 5 V der Ports sind einfach durchverbunden. Bei mehreren Servos/Modulen auf eine ausreichend starke Versorgung achten.
+- **VBUS** = BEC bis 8,4 V, über J9 oder über die Reihe U vom Empfänger. Er geht ungeregelt an alle Ports, die Teilnehmer müssen diese Spannung also selbst vertragen.
+- Der RP2350-Zero bekommt 5 V vom eigenen Regler U2 über D1. Steckt USB, verhindert D1 Rückstrom in den Regler.
+- Jede Port-Sicherung F schaltet bei Kurzschluss nur ihren Port ab, der Empfänger läuft weiter. Nach Beseitigung des Fehlers schaltet sie selbst wieder ein.
+- Hat ein Modul eine eigene Versorgung, die Lötbrücke JP seines Ports auftrennen, damit zwei Netzteile nicht gegeneinander arbeiten.
+- Große Verbraucher (Lasten der Multiswitche, Lautsprecher-Verstärker) nicht über diese Platine versorgen.
 
-## Spannungsmessung (optional)
+## Spannungsmessung
 
-```
-+V (BEC/Empfänger) ── 33 kΩ ──┬── GP26
-                              ├── 100 nF ── GND   (optional, beruhigt den Messwert)
-                              └── 10 kΩ ── GND
-```
-
-Teiler 4,3 : 1, messbar bis ca. 14 V. Ohne Teiler im Lua-Menü „Spannung senden“ auf **Aus** lassen.
+R17/R18 teilen VBUS 4,3 : 1 auf GP26, C4 beruhigt den Messwert. Messbar bis ca. 14 V. Die Firmware sendet den Wert auf Wunsch als RxBt oder Zellenwert (Lua „Spannung senden“).
