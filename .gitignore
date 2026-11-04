@@ -1,0 +1,5 @@
+backups/
+build/
+*.bin
+*.uf2
+*.elf

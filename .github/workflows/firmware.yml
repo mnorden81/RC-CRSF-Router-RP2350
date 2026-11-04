@@ -1,0 +1,47 @@
+name: Firmware bauen
+
+# Host-Tests des 7-Port-Routers, dann Arduino-Sketch mit festem Core bauen
+# und die .uf2 (zum Draufziehen auf das USB-Laufwerk RP2350) hochladen.
+on:
+  push:
+    paths: ["firmware/**", "tests/**", ".github/workflows/firmware.yml"]
+  pull_request:
+    paths: ["firmware/**", "tests/**", ".github/workflows/firmware.yml"]
+  workflow_dispatch:
+
+env:
+  SKETCH: firmware/RC_CRSF_Router_RP2350
+
+jobs:
+  tests:
+    name: Host-Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Router-Tests
+        run: sh tests/run_tests.sh
+
+  build:
+    name: Firmware bauen (Arduino, RP2350)
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: RP2350-Core installieren
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+          arduino-cli core update-index
+          arduino-cli core install rp2040:rp2040@6.3.2
+      - name: Kompilieren
+        run: |
+          arduino-cli compile --warnings default \
+            --fqbn "rp2040:rp2040:waveshare_rp2350_zero" \
+            --output-dir build "$SKETCH"
+          ls -l build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crsf-router8-rp2350-firmware
+          # *.uf2 = auf das Laufwerk RP2350 ziehen (BOOT-Taste beim Einstecken)
+          path: build/*.uf2
