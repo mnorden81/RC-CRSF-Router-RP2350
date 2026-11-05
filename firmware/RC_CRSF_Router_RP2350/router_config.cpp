@@ -11,7 +11,7 @@ bool          cfgDirty   = false;
 unsigned long cfgDirtyMs = 0;
 
 static constexpr uint32_t CFG_MAGIC   = 0x38525352;   // "RSR8"
-static constexpr uint8_t  CFG_VERSION = 2;   // v0.2.0: 6 statt 7 Ports
+static constexpr uint8_t  CFG_VERSION = 3;   // v0.3.0: Platz fuer 7 Ports (beide Varianten)
 static constexpr size_t   CFG_EEPROM  = 256;
 
 struct CfgBlock {

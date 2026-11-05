@@ -1,7 +1,8 @@
 name: Firmware bauen
 
-# Host-Tests des 7-Port-Routers, dann Arduino-Sketch mit festem Core bauen
-# und die .uf2 (zum Draufziehen auf das USB-Laufwerk RP2350) hochladen.
+# Host-Tests des Routers, dann den Arduino-Sketch in beiden Varianten
+# (Router = 7 Ports, Test = 6 Ports) mit festem Core bauen und die .uf2
+# (zum Draufziehen auf das USB-Laufwerk RP2350) hochladen.
 on:
   push:
     paths: ["firmware/**", "tests/**", ".github/workflows/firmware.yml"]
@@ -22,9 +23,13 @@ jobs:
         run: sh tests/run_tests.sh
 
   build:
-    name: Firmware bauen (Arduino, RP2350)
+    name: Firmware bauen (Arduino, RP2350, ${{ matrix.variante }})
     needs: tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variante: [Router, Test]
     steps:
       - uses: actions/checkout@v4
       - uses: arduino/setup-arduino-cli@v2
@@ -34,14 +39,20 @@ jobs:
           arduino-cli config add board_manager.additional_urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
           arduino-cli core update-index
           arduino-cli core install rp2040:rp2040@6.3.2
+      - name: Variante Test in pins.h waehlen
+        if: matrix.variante == 'Test'
+        run: |
+          sed -i 's|^#define VARIANTE_ROUTER |//#define VARIANTE_ROUTER |; s|^//#define VARIANTE_TEST |#define VARIANTE_TEST |' "$SKETCH/pins.h"
+          grep -n "define VARIANTE_" "$SKETCH/pins.h"
       - name: Kompilieren
         run: |
           arduino-cli compile --warnings default \
             --fqbn "rp2040:rp2040:waveshare_rp2350_zero" \
             --output-dir build "$SKETCH"
+          for f in build/*.uf2; do mv "$f" "build/CRSF-Router8_${{ matrix.variante }}.uf2"; done
           ls -l build
       - uses: actions/upload-artifact@v4
         with:
-          name: crsf-router8-rp2350-firmware
+          name: crsf-router8-rp2350-${{ matrix.variante }}
           # *.uf2 = auf das Laufwerk RP2350 ziehen (BOOT-Taste beim Einstecken)
           path: build/*.uf2
