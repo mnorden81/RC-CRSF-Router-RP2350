@@ -7,7 +7,7 @@ Arduino-Sketch für den Waveshare RP2350-Zero, Core **arduino-pico 6.3.2** (Earl
 | Datei | Inhalt |
 |---|---|
 | `RC_CRSF_Router_RP2350.ino` | Start der Ports, Lua-Menü, LED, Telemetrie, Hauptschleife |
-| `multi_router.*` | Router mit Uplink + 7 Ports: Frame-Parser, Warteschlangen, nicht blockierendes Senden, Anbindung der CRSF-Klasse |
+| `multi_router.*` | Router mit Uplink + 6 Ports: Frame-Parser, Warteschlangen, nicht blockierendes Senden, Anbindung der CRSF-Klasse |
 | `router_config.*` | Einstellungen im Flash (EEPROM-Emulation, mit Prüfsumme) |
 | `ws2812.*` | RGB-LED ohne PIO (alle PIO-Einheiten sind von den UARTs belegt) |
 | `pins.h` | Pinbelegung |
@@ -17,7 +17,7 @@ Arduino-Sketch für den Waveshare RP2350-Zero, Core **arduino-pico 6.3.2** (Earl
 
 ```
 Empfänger ──UART── MultiRouter ──┬── Port 2 (Hardware-UART)
-                       │         ├── Port 1, 3…7 (PIO-UART)
+                       │         ├── Port 1, 3…6 (PIO-UART)
                        │
                   local() Stream
                        │
@@ -42,9 +42,9 @@ Gegenüber RC_Common 1.2.0 gibt es drei kleine Anpassungen, alle mit „RP2350-K
 
 Für die ESP32-Projekte ändert sich dadurch nichts. Vorschlag: die drei Punkte bei der nächsten RC_Common-Version (1.3.0) in alle Kopien übernehmen, dann ist auch diese Kopie wieder identisch.
 
-## Grenzen von v0.1.0
+## Grenzen von v0.2.0
 
 - Alle Ports nur CRSF. S.Port und GPS an den Ports sind noch nicht eingebaut.
 - Kein WLAN, keine WebUI, Bedienung nur über Lua. Updates per USB.
 - Speichern einer Einstellung blockiert den Chip einige Millisekunden (Flash). Dabei können einzelne Frames verloren gehen; gespeichert wird nur nach Änderungen im Lua-Menü.
-- Nicht auf Hardware getestet: PIO-Belegung (12 von 12 State-Machines), Timing der Software-LED, Durchsatz bei 7 aktiven Ports.
+- Nicht auf Hardware getestet: PIO-Belegung (10 von 12 State-Machines), Timing der Software-LED, Durchsatz bei 6 aktiven Ports.

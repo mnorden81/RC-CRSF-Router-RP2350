@@ -1,4 +1,4 @@
-// tests/test_router.cpp - Host-Tests fuer den 7-Port-Router (ohne RP2350)
+// tests/test_router.cpp - Host-Tests fuer den 6-Port-Router (ohne RP2350)
 //   sh tests/run_tests.sh
 // Prueft die Weiterleitungsregeln, die Warteschlangen, das nicht
 // blockierende Senden und die Anbindung der CRSF-Klasse (Lua, Ping).
@@ -48,12 +48,12 @@ static bool contains(const std::vector<uint8_t>& hay, const std::vector<uint8_t>
 }
 
 static void testDownBroadcast() {
-    MultiRouter r; FakeStream up, p[7];
-    r.begin(&up); for (int i = 0; i < 7; i++) r.setPort(i, &p[i]);
+    MultiRouter r; FakeStream up, p[6];
+    r.begin(&up); for (int i = 0; i < 6; i++) r.setPort(i, &p[i]);
     r.setOwnAddress(0xCF);
     auto rc = rcFrame();
     up.feed(rc); r.poll(1);
-    for (int i = 0; i < 7; i++) CHECK(p[i].tx == rc);
+    for (int i = 0; i < 6; i++) CHECK(p[i].tx == rc);
     CHECK(r.fwdDown() == 1);
     CHECK(r.local().available() == (int)rc.size());   // CRSF-Klasse sieht ihn auch
 }
@@ -72,12 +72,12 @@ static void testOwnAddressStaysLocal() {
 }
 
 static void testUpAndNoCrossTalk() {
-    MultiRouter r; FakeStream up, p[7];
-    r.begin(&up); for (int i = 0; i < 7; i++) r.setPort(i, &p[i]);
+    MultiRouter r; FakeStream up, p[6];
+    r.begin(&up); for (int i = 0; i < 6; i++) r.setPort(i, &p[i]);
     auto tele = frame(0x08, {0, 50, 0, 0, 0, 0, 0, 0});
     p[4].feed(tele); r.poll(1);
     CHECK(up.tx == tele);
-    for (int i = 0; i < 7; i++) CHECK(p[i].tx.empty());   // nie zu anderen Ports
+    for (int i = 0; i < 6; i++) CHECK(p[i].tx.empty());   // nie zu anderen Ports
     CHECK(r.fwdUp() == 1);
     CHECK(r.portAlive(4, 100) && !r.portAlive(3, 100));
     CHECK(!r.portAlive(4, 5000));
@@ -142,7 +142,7 @@ static void testLocalCrsf() {
     crsf.read_packets(0);
     CHECK(crsf.getDeviceInfoReplyPending());
     crsf.setDeviceInfoReplyPending(false);
-    crsf.send_device_info("CRSF-Router8@15", 26, 10);
+    crsf.send_device_info("CRSF-Router8@15", 25, 20);
     r.poll(2);
     CHECK(up.tx.size() > 6 && up.tx[2] == 0x29 && up.tx[4] == 0xCF);
     CHECK(p1.tx.size() == 6);   // nur der Ping ging nach unten, nicht unsere Antwort
@@ -165,7 +165,7 @@ static void testLocalCrsf() {
 
 static void testConfig() {
     cfgDefaults();
-    CHECK(cfg.moduleAddr == 15 && cfg.portBaud[6] == PORT_BAUD_DEFAULT && PORT_BAUD[PORT_BAUD_DEFAULT] == 420000);
+    CHECK(cfg.moduleAddr == 15 && cfg.portBaud[5] == PORT_BAUD_DEFAULT && PORT_BAUD[PORT_BAUD_DEFAULT] == 420000);
     cfg.moduleAddr = 99; cfg.portBaud[2] = 77; cfg.voltCorr = 9; cfg.voltMode = 5;
     cfgSanitize();
     CHECK(cfg.moduleAddr == 15 && cfg.portBaud[2] == PORT_BAUD_DEFAULT && cfg.voltCorr == 0 && cfg.voltMode == VOLT_OFF);

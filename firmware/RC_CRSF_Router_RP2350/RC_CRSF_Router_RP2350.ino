@@ -1,12 +1,12 @@
 /*
-   RC_CRSF_Router_RP2350 - CRSF-Verteiler mit 7 Ports (Waveshare RP2350-Zero)
+   RC_CRSF_Router_RP2350 - CRSF-Verteiler mit 6 Ports (Waveshare RP2350-Zero)
    PiperPilot
 
    Grosser Bruder des RC-CRSF-Router-ESP32-S3: gleiche Regeln, gleiche
-   Lua-Bedienung, aber 7 Ports statt 2 und kein WLAN.
+   Lua-Bedienung, aber 6 Ports statt 2 und kein WLAN.
 
    Der Router haengt an einem freien CRSF-Port des Empfaengers (Uplink) und
-   verteilt CRSF auf Port 1-7. An jedem Port: Multiswitch, Soundmodul,
+   verteilt CRSF auf Port 1-6. An jedem Port: Multiswitch, Soundmodul,
    weiterer Router (Kette) oder Sensor.
      - vom Empfaenger nach unten: alles ausser Anfragen an die eigene Adresse
      - von unten nach oben: alles
@@ -17,7 +17,8 @@
    Uplink  = Hardware-UART0 (Serial1), TX GP0 / RX GP1, fest 420000 Baud
    Port 1  = PIO-UART, TX GP2 / RX GP3
    Port 2  = Hardware-UART1 (Serial2), TX GP4 / RX GP5
-   Port 3-7 = PIO-UART: GP6/7, GP8/9, GP10/11, GP12/13, GP14/15
+   Port 3-6 = PIO-UART: GP6/7, GP8/14, GP15/27, GP28/29
+   Nur die seitlichen Stiftleisten, die unteren Pads GP9-13 bleiben frei.
    Je Port Baudrate oder "Aus" im Lua-Menue, gilt nach einem Neustart.
 
    ── Adresse ───────────────────────────────────────────────────────────
@@ -53,26 +54,27 @@
 
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
-#define FW_MINOR 1
+#define FW_MINOR 2
 #define FW_PATCH 0
-static const char*   FW_VERSION       = "0.1.0";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 10
+static const char*   FW_VERSION       = "0.2.0";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 20
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 // v0.1.0: erste Firmware: 1 Uplink + 7 Ports, Lua-Menue, Status-LED,
 //         Spannung/Temperatur als Telemetrie, Einstellungen im Flash.
+// v0.2.0: nur seitliche Stiftleisten: 1 Uplink + 6 Ports (Port 7 entfaellt),
+//         Pins Port 4-6 neu, Lua-IDs ab Moduladresse um 1 nach vorn.
 
 static constexpr uint32_t UPLINK_BAUD = 420000;
 static constexpr size_t   RX_FIFO     = 512;   // Software-Empfangspuffer je UART
 
-// Port 1 und 3-7 als PIO-UART (belegen erst bei begin() State-Machines)
+// Port 1 und 3-6 als PIO-UART (belegen erst bei begin() State-Machines)
 static SerialPIO uartPio1(PIN_P1_TX, PIN_P1_RX, RX_FIFO);
 static SerialPIO uartPio3(PIN_P3_TX, PIN_P3_RX, RX_FIFO);
 static SerialPIO uartPio4(PIN_P4_TX, PIN_P4_RX, RX_FIFO);
 static SerialPIO uartPio5(PIN_P5_TX, PIN_P5_RX, RX_FIFO);
 static SerialPIO uartPio6(PIN_P6_TX, PIN_P6_RX, RX_FIFO);
-static SerialPIO uartPio7(PIN_P7_TX, PIN_P7_RX, RX_FIFO);
 // Index = Port-1; Port 2 (Index 1) ist der Hardware-UART
-static SerialPIO* const PIO_PORTS[MR_MAX_DOWN] = {&uartPio1, nullptr, &uartPio3, &uartPio4, &uartPio5, &uartPio6, &uartPio7};
+static SerialPIO* const PIO_PORTS[MR_MAX_DOWN] = {&uartPio1, nullptr, &uartPio3, &uartPio4, &uartPio5, &uartPio6};
 
 // Zustand je Port: 0 aus, 1 laeuft, 2 Start fehlgeschlagen
 static constexpr uint8_t PORT_OFF = 0, PORT_RUN = 1, PORT_FAIL = 2;
@@ -128,14 +130,14 @@ static void startPorts() {
 
 // ======== Lua-Menue ===================================================
 //  0 Root            1 Info Version
-//  2 Ordner Ports    3-9 Port 1-7 (Aus oder Baudrate)
-// 10 Moduladresse
-// 11 Ordner Telemetrie 12 Spannung senden  13 Korrektur  14 Info Spannung
-//                      15 Temperatur senden  16 Info Temperatur
-// 17 Ordner Status  18 Frames runter  19 Frames hoch  20 Verworfen
-//                   21 CRC-Fehler unten  22 Adresskonflikt  23 Ports aktiv
-// 24 LED Farbfolge  25 Neustart  26 Info Geraetename
-static constexpr uint8_t LUA_COUNT = 26;
+//  2 Ordner Ports    3-8 Port 1-6 (Aus oder Baudrate)
+//  9 Moduladresse
+// 10 Ordner Telemetrie 11 Spannung senden  12 Korrektur  13 Info Spannung
+//                      14 Temperatur senden  15 Info Temperatur
+// 16 Ordner Status  17 Frames runter  18 Frames hoch  19 Verworfen
+//                   20 CRC-Fehler unten  21 Adresskonflikt  22 Ports aktiv
+// 23 LED Farbfolge  24 Neustart  25 Info Geraetename
+static constexpr uint8_t LUA_COUNT = 25;
 static LuaItem luaItems[LUA_COUNT + 1];
 static LuaMenu luaMenu(luaItems, sizeof(luaItems) / sizeof(luaItems[0]));
 
@@ -180,7 +182,7 @@ static void    luaSetRestart(uint8_t, uint8_t v) { if (v) requestRestart(); }
 
 static void buildLuaMenu() {
     static const char* AUS_EIN = "Aus;Ein";
-    static const char* PORT_NAME[MR_MAX_DOWN] = {"Port 1", "Port 2", "Port 3", "Port 4", "Port 5", "Port 6", "Port 7"};
+    static const char* PORT_NAME[MR_MAX_DOWN] = {"Port 1", "Port 2", "Port 3", "Port 4", "Port 5", "Port 6"};
     LuaMenu& m = luaMenu;
     m.clear();
     m.folder(0, 0, "");
@@ -188,21 +190,21 @@ static void buildLuaMenu() {
     m.folder(2, 0, "Ports (nach Neustart)");
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++)
         m.select(3 + i, 2, PORT_NAME[i], PORT_BAUD_OPTIONS, luaGetPort, luaSetPort, i);
-    m.u8(10, 0, "Modul Adresse", 0, 15, "", luaGetAddr, luaSetAddr);
-    m.folder(11, 0, "Telemetrie");
-    m.select(12, 11, "Spannung senden", "Aus;als RxBt;als Zellen", luaGetVMode, luaSetVMode);
-    m.select(13, 11, "Spannung Korrektur", "-0.5V;-0.4V;-0.3V;-0.2V;-0.1V;0.0V;+0.1V;+0.2V;+0.3V;+0.4V;+0.5V", luaGetVCorr, luaSetVCorr);
-    m.info(14, 11, "Spannung", "")->view = luaShowVolt;
-    m.select(15, 11, "Temperatur senden", AUS_EIN, luaGetTSend, luaSetTSend);
-    m.info(16, 11, "Chiptemperatur", "")->view = luaShowTemp;
-    m.folder(17, 0, "Status");
+    m.u8(9, 0, "Modul Adresse", 0, 15, "", luaGetAddr, luaSetAddr);
+    m.folder(10, 0, "Telemetrie");
+    m.select(11, 10, "Spannung senden", "Aus;als RxBt;als Zellen", luaGetVMode, luaSetVMode);
+    m.select(12, 10, "Spannung Korrektur", "-0.5V;-0.4V;-0.3V;-0.2V;-0.1V;0.0V;+0.1V;+0.2V;+0.3V;+0.4V;+0.5V", luaGetVCorr, luaSetVCorr);
+    m.info(13, 10, "Spannung", "")->view = luaShowVolt;
+    m.select(14, 10, "Temperatur senden", AUS_EIN, luaGetTSend, luaSetTSend);
+    m.info(15, 10, "Chiptemperatur", "")->view = luaShowTemp;
+    m.folder(16, 0, "Status");
     static const char* CNT[4] = {"Frames runter", "Frames hoch", "Verworfen", "CRC-Fehler unten"};
-    for (uint8_t a = 0; a < 4; a++) { LuaItem* it = m.info(18 + a, 17, CNT[a], ""); it->arg = a; it->view = luaShowCount; }
-    m.info(22, 17, "Adresskonflikt", "")->view = luaShowDup;
-    m.info(23, 17, "Ports aktiv", "")->view = luaShowPorts;
-    m.select(24, 0, "LED Farbfolge", "GRB;RGB", luaGetLed, luaSetLed);
-    m.select(25, 0, "Neustart", "Nein;Jetzt", luaGetRestart, luaSetRestart);
-    m.info(26, 0, "Geraetename", "")->view = luaShowName;
+    for (uint8_t a = 0; a < 4; a++) { LuaItem* it = m.info(17 + a, 16, CNT[a], ""); it->arg = a; it->view = luaShowCount; }
+    m.info(21, 16, "Adresskonflikt", "")->view = luaShowDup;
+    m.info(22, 16, "Ports aktiv", "")->view = luaShowPorts;
+    m.select(23, 0, "LED Farbfolge", "GRB;RGB", luaGetLed, luaSetLed);
+    m.select(24, 0, "Neustart", "Nein;Jetzt", luaGetRestart, luaSetRestart);
+    m.info(25, 0, "Geraetename", "")->view = luaShowName;
 }
 
 // ======== Status-LED (Farben) =========================================
