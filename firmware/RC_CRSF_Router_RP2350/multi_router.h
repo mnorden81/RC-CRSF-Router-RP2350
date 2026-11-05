@@ -1,7 +1,7 @@
 // multi_router.h - CRSF-Router mit vielen Ports (RP2350)
 //
 // Gleiche Regeln wie der Router in RC_Common (CRSF_ESP32 1.1.0), nur mit
-// bis zu 7 Ports nach unten statt 2:
+// bis zu 6 Ports nach unten statt 2:
 //   Uplink -> Ports : alles ausser Extended-Frames an die eigene Adresse
 //                     (0xC8 gilt als Broadcast und geht immer weiter)
 //   Ports -> Uplink : alles
@@ -22,7 +22,7 @@
 
 #include "src/RC_Common/CRSF_ESP32/crsf_esp32.h"
 
-#define MR_MAX_DOWN      7     // Ports nach unten
+#define MR_MAX_DOWN      6     // Ports nach unten
 #define MR_FRAME         64    // groesster CRSF-Frame (wie CRSF_PACKET_SIZE)
 #define MR_QUEUE_DOWN    8     // Frames je Port nach unten
 #define MR_QUEUE_UP      16    // Frames zum Empfaenger (alle Ports + eigene)
