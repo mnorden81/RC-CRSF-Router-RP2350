@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "Router8")(type "KiCad")(uri "${KIPRJMOD}/Router8.kicad_sym")(options "")(descr "Projekt-Symbole CRSF-Router 8"))
+)

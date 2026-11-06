@@ -15,6 +15,47 @@ Es gibt zwei Versionen, jede mit eigenem KiCad-Projekt. Die Firmware ist für be
 |---|---|
 | ![Router](Router/vorschau-platine.png) | ![Test](Test/vorschau-platine.png) |
 
+## Variante 2: nur bedrahtete Bauteile (THT)
+
+Seit 05.11.2026 gibt es zu jeder Version eine **Variante 2** mit ausschließlich THT-Bauteilen, gut von Hand lötbar und einfacher zu routen. Variante 1 (SMD, Ordner `Router/` und `Test/`) bleibt unverändert.
+
+| Version | Ordner V2 | Platine |
+|---|---|---|
+| Router (7 Ports) | [`Router-V2/`](Router-V2/) | 70 × 45 mm, 2 Lagen, 4 × M3 |
+| Test (6 Ports) | [`Test-V2/`](Test-V2/) | 70 × 45 mm, 2 Lagen, 4 × M3 |
+
+Vereinfachungen gegenüber Variante 1:
+
+- **Kein Spannungsregler** (06.11.2026): Der RP2350-Zero bekommt das BEC über D1 (1N5819, ca. 0,3 V Verlust) direkt an seinen 5-V-Pin. **Deshalb nur BEC mit 5 bis 6 V, kein HV-BEC (7,4/8,4 V)!** D1 verhindert, dass USB den Bus speist.
+- **Eine** Sicherung F1 (PTC 3 A) für alle Ports statt einer je Port, keine Lötbrücken JP und keine 220-Ω-Serienwiderstände. Statt über 30 sind es nur noch 9 Bauteile plus Stecker.
+- D1 1N5819 (DO-41), D2 P6KE15CA (DO-15), Elko radial 8 mm, Scheibenkondensator RM 5, Widerstände RM 10,16.
+- Breite Abstände, Leiterbahnen 0,4 mm (Power 1,0 mm), Abstand 0,3 mm. Damit lässt sich alles mit Freerouting oder von Hand verbinden.
+- Port-Stecker ohne eigene Abschaltung: ein Modul mit eigener Versorgung bekommt einfach kein V-Kabel.
+
+Erstes 3D-Modell (vereinfachte Körper, Maße aus der Platine): [`3d-modell-v2.html`](3d-modell-v2.html) herunterladen und im Browser öffnen (braucht Internet für die 3D-Bibliothek).
+
+| Router V2 | Test V2 |
+|---|---|
+| ![Router V2](Router-V2/vorschau-platine.png) | ![Test V2](Test-V2/vorschau-platine.png) |
+
+### Stückliste Variante 2
+
+| Ref | Anzahl | Wert | Bauform | Hinweis |
+|---|---|---|---|---|
+| U1 | 1 | Waveshare RP2350-Zero | Buchsenleisten 2× 1×9 (+ 1× 1×5 bei Router) | gesteckt |
+| D1 | 1 | 1N5819 | DO-41 | BEC zum 5-V-Pin, kein Rückstrom bei USB |
+| D2 | 1 | P6KE15CA | DO-15 | Suppressordiode gegen Spannungsspitzen |
+| F1 | 1 | PTC 3 A / 16 V, Bourns MF-RG300 | radial | gemeinsame Sicherung aller Ports |
+| C1 | 1 | 220 µF / 16 V | Elko radial D 8 mm, RM 3,5 | |
+| C4 | 1 | 100 nF | Keramik, RM 5 | Messeingang |
+| R1 | 1 | 33 kΩ | 0,25 W axial, RM 10,16 | Spannungsteiler |
+| R2 | 1 | 10 kΩ | 0,25 W axial, RM 10,16 | Spannungsteiler |
+| J1–J8 / J1–J7 | 8 / 7 | Stiftleiste 1×4 | 2,54 mm, gerade | Router / Test |
+| J9 | 1 | Stiftleiste 1×2 | 2,54 mm, gerade | BEC IN |
+| H1–H4 | 4 | Bohrung M3 | | |
+
+> Stand V2: Schaltplan fertig, Bauteile platziert, Netze geprüft, DRC ohne Abstandsfehler. **Noch nicht geroutet.** Abmessungen von F1 vor der Bestellung im Datenblatt prüfen. Versorgung nur mit BEC 5–6 V.
+
 ## KiCad-Projekte
 
 Jeder Ordner enthält ein vollständiges Projekt:
