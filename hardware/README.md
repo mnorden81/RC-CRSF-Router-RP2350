@@ -26,8 +26,9 @@ Seit 05.11.2026 gibt es zu jeder Version eine **Variante 2** mit ausschließlich
 
 Vereinfachungen gegenüber Variante 1:
 
-- **Eine** Sicherung F1 (PTC 3 A) für alle Ports statt einer je Port, keine Lötbrücken JP und keine 220-Ω-Serienwiderstände. Statt über 30 sind es nur noch 12 Bauteile plus Stecker.
-- Regler U2 im TO-92 (LP2950-5.0), D1 1N5819 (DO-41), D2 P6KE15CA (DO-15), Elko radial 8 mm, Scheibenkondensatoren RM 5, Widerstände RM 10,16.
+- **Kein Spannungsregler** (06.11.2026): Der RP2350-Zero bekommt das BEC über D1 (1N5819, ca. 0,3 V Verlust) direkt an seinen 5-V-Pin. **Deshalb nur BEC mit 5 bis 6 V, kein HV-BEC (7,4/8,4 V)!** D1 verhindert, dass USB den Bus speist.
+- **Eine** Sicherung F1 (PTC 3 A) für alle Ports statt einer je Port, keine Lötbrücken JP und keine 220-Ω-Serienwiderstände. Statt über 30 sind es nur noch 9 Bauteile plus Stecker.
+- D1 1N5819 (DO-41), D2 P6KE15CA (DO-15), Elko radial 8 mm, Scheibenkondensator RM 5, Widerstände RM 10,16.
 - Breite Abstände, Leiterbahnen 0,4 mm (Power 1,0 mm), Abstand 0,3 mm. Damit lässt sich alles mit Freerouting oder von Hand verbinden.
 - Port-Stecker ohne eigene Abschaltung: ein Modul mit eigener Versorgung bekommt einfach kein V-Kabel.
 
@@ -42,12 +43,10 @@ Erstes 3D-Modell (vereinfachte Körper, Maße aus der Platine): [`3d-modell-v2.h
 | Ref | Anzahl | Wert | Bauform | Hinweis |
 |---|---|---|---|---|
 | U1 | 1 | Waveshare RP2350-Zero | Buchsenleisten 2× 1×9 (+ 1× 1×5 bei Router) | gesteckt |
-| U2 | 1 | LP2950-5.0 (z. B. LP2950ACZ-5.0) | TO-92 | 5-V-LDO, 1 = OUT, 2 = GND, 3 = IN |
-| D1 | 1 | 1N5819 | DO-41 | kein Rückstrom bei USB |
+| D1 | 1 | 1N5819 | DO-41 | BEC zum 5-V-Pin, kein Rückstrom bei USB |
 | D2 | 1 | P6KE15CA | DO-15 | Suppressordiode gegen Spannungsspitzen |
 | F1 | 1 | PTC 3 A / 16 V, Bourns MF-RG300 | radial | gemeinsame Sicherung aller Ports |
 | C1 | 1 | 220 µF / 16 V | Elko radial D 8 mm, RM 3,5 | |
-| C2, C3 | 2 | 1 µF / 25 V | Keramik, RM 5 | Regler Ein-/Ausgang |
 | C4 | 1 | 100 nF | Keramik, RM 5 | Messeingang |
 | R1 | 1 | 33 kΩ | 0,25 W axial, RM 10,16 | Spannungsteiler |
 | R2 | 1 | 10 kΩ | 0,25 W axial, RM 10,16 | Spannungsteiler |
@@ -55,7 +54,7 @@ Erstes 3D-Modell (vereinfachte Körper, Maße aus der Platine): [`3d-modell-v2.h
 | J9 | 1 | Stiftleiste 1×2 | 2,54 mm, gerade | BEC IN |
 | H1–H4 | 4 | Bohrung M3 | | |
 
-> Stand V2: Schaltplan fertig, Bauteile platziert, Netze geprüft, DRC ohne Abstandsfehler. **Noch nicht geroutet.** Pinbelegung von U2 und Abmessungen von F1 vor der Bestellung im Datenblatt prüfen.
+> Stand V2: Schaltplan fertig, Bauteile platziert, Netze geprüft, DRC ohne Abstandsfehler. **Noch nicht geroutet.** Abmessungen von F1 vor der Bestellung im Datenblatt prüfen. Versorgung nur mit BEC 5–6 V.
 
 ## KiCad-Projekte
 
