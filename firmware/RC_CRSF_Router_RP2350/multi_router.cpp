@@ -92,6 +92,102 @@ void MultiRouter::setPort(uint8_t i, Stream* s) {
     if (i < MR_MAX_DOWN) down[i] = s;
 }
 
+// ── Filter je Port ─────────────────────────────────────────────────────
+void MultiRouter::setPortFilter(uint8_t i, bool rc, bool linkStats) {
+    if (i >= MR_MAX_DOWN) return;
+    pcfg[i].rc = rc;
+    pcfg[i].linkStats = linkStats;
+}
+
+void MultiRouter::setTelemetry(uint8_t i, uint16_t ms) {
+    if (i >= MR_MAX_DOWN) return;
+    pcfg[i].teleMs = ms;
+    memset(tele[i], 0, sizeof(tele[i]));
+}
+
+void MultiRouter::setPortHalfDuplex(uint8_t i, bool hd) {
+    if (i < MR_MAX_DOWN) pcfg[i].halfDuplex = hd;
+}
+
+// Nach unten: RC-Kanaele und LinkStats je Port abschaltbar, alles andere
+// (Ping, Lua, Befehle, Broadcasts) geht immer durch
+bool MultiRouter::passDown(uint8_t i, uint8_t type) {
+    if (type == CRSF_FRAMETYPE_RC_CHANNELS_PACKED || type == 0x17) return pcfg[i].rc;
+    if (type == CRSF_FRAMETYPE_LINK_STATISTICS || type == 0x1C || type == 0x1D) return pcfg[i].linkStats;
+    return true;
+}
+
+// Nach oben: Telemetrie (Frames < 0x28) je Port aus oder gebremst. Die
+// Bremse zaehlt je Sensor-Art; bei RPM, Temperatur und Zellen (0x0C-0x0E)
+// zaehlt die Quellen-ID mit, damit sich mehrere Sensoren nicht verdraengen.
+bool MultiRouter::passUp(uint8_t i, const uint8_t* f, uint8_t n) {
+    uint8_t type = f[2];
+    if (type >= 0x28) return true;
+    uint16_t ms = pcfg[i].teleMs;
+    if (ms == 0) return true;
+    if (ms == MR_TELE_OFF) return false;
+    uint8_t sub = (type >= 0x0C && type <= 0x0E && n > 4) ? f[3] : 0;
+    MrTeleSlot* slot = nullptr;
+    for (uint8_t k = 0; k < MR_TELE_SLOTS && !slot; k++) {
+        MrTeleSlot& t = tele[i][k];
+        if (t.used && t.type == type && t.sub == sub) slot = &t;
+    }
+    if (slot) {
+        if (now_ - slot->last < ms) return false;
+    } else {
+        // neue Sensor-Art: freien Platz nehmen, sonst den am laengsten
+        // nicht benutzten
+        slot = &tele[i][0];
+        for (uint8_t k = 0; k < MR_TELE_SLOTS; k++) {
+            MrTeleSlot& t = tele[i][k];
+            if (!t.used) { slot = &t; break; }
+            if ((long)(t.last - slot->last) < 0) slot = &t;
+        }
+        slot->used = 1; slot->type = type; slot->sub = sub;
+    }
+    slot->last = now_;
+    return true;
+}
+
+// ── Geraeteliste ───────────────────────────────────────────────────────
+// DEVICE_INFO: [sync][len][0x29][Ziel][Absender][Name\0][Seriennr. ...]
+void MultiRouter::learnDevice(uint8_t i, const uint8_t* f, uint8_t n) {
+    if (n < 7) return;
+    uint8_t addr = f[4];
+    char name[MR_DEV_NAME];
+    uint8_t k = 0;
+    for (uint8_t p = 5; p + 1 < n && f[p] && k + 1 < MR_DEV_NAME; p++) {
+        uint8_t c = f[p];
+        name[k++] = (c >= 0x20 && c < 0x7F) ? (char)c : '?';
+    }
+    name[k] = '\0';
+    for (uint8_t d = 0; d < devCount[i]; d++) {
+        if (dev[i][d].addr == addr) {
+            if (strcmp(dev[i][d].name, name) != 0) { memcpy(dev[i][d].name, name, k + 1); devChanges++; }
+            return;
+        }
+    }
+    if (devCount[i] >= MR_DEV_PER_PORT) return;
+    dev[i][devCount[i]].addr = addr;
+    memcpy(dev[i][devCount[i]].name, name, k + 1);
+    devCount[i]++;
+    devChanges++;
+}
+
+void MultiRouter::clearDevices() {
+    memset(devCount, 0, sizeof(devCount));
+    devChanges++;
+}
+
+// Ping (0x28) an Broadcast, Absender = eigene Adresse. Die Geraete
+// antworten mit DEVICE_INFO an uns; das landet nur in der Geraeteliste.
+void MultiRouter::pingPorts() {
+    uint8_t f[6] = {CRSF_SYNC_byte, 4, CRSF_FRAMETYPE_DEVICE_PING, 0x00, ownAddr, 0};
+    f[5] = crc8(&f[2], 3);
+    for (uint8_t i = 0; i < MR_MAX_DOWN; i++)
+        if (down[i]) enqueue(downQ[i], f, sizeof(f), downStats[i]);
+}
+
 void MultiRouter::fromUplink(const uint8_t* f, uint8_t n) {
     upStats.framesIn++;
     upStats.lastRxMs = now_ ? now_ : 1;
@@ -104,6 +200,7 @@ void MultiRouter::fromUplink(const uint8_t* f, uint8_t n) {
     bool any = false;
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
         if (!down[i]) continue;
+        if (!passDown(i, type)) { downStats[i].filtered++; continue; }
         enqueue(downQ[i], f, n, downStats[i]);
         any = true;
     }
@@ -113,40 +210,61 @@ void MultiRouter::fromUplink(const uint8_t* f, uint8_t n) {
 void MultiRouter::fromDown(uint8_t i, const uint8_t* f, uint8_t n) {
     downStats[i].framesIn++;
     downStats[i].lastRxMs = now_ ? now_ : 1;
-    // Doppelte Adresse: ein Geraet weiter hinten meldet unsere Adresse
-    if (f[2] == CRSF_FRAMETYPE_DEVICE_INFO && n > 5 && f[4] == ownAddr) dupAddr = true;
+    if (f[2] == CRSF_FRAMETYPE_DEVICE_INFO && n > 5) {
+        // Doppelte Adresse: ein Geraet weiter hinten meldet unsere Adresse
+        if (f[4] == ownAddr) dupAddr = true;
+        learnDevice(i, f, n);
+        // Antwort auf unseren eigenen Ping: bleibt hier
+        if (f[3] == ownAddr) return;
+    }
     if (!uplink) return;
+    if (!passUp(i, f, n)) { downStats[i].filtered++; return; }
     enqueue(upQ, f, n, upStats);
     fwdUp_++;
 }
 
+// Bytes eines Ports lesen. Bleibt ein Frame halb liegen (Stoerung, Geraet
+// abgesteckt), wird er nach MR_PARSER_TIMEOUT_MS verworfen - sonst wartet
+// ein Halbduplex-Port endlos auf das Frame-Ende.
+void MultiRouter::readPort(Stream* s, MrParser& p, unsigned long& lastByte, bool up, uint8_t i) {
+    if (p.idx && s->available() <= 0 && now_ - lastByte > MR_PARSER_TIMEOUT_MS) p.idx = 0;
+    bool crcErr;
+    // Begrenzt, damit ein Dauerstrom die anderen Ports nicht aushungert
+    for (int k = 0; k < 256 && s->available() > 0; k++) {
+        lastByte = now_;
+        if (p.feed((uint8_t)s->read(), crcErr)) {
+            if (up) fromUplink(p.buf, p.frameLen());
+            else    fromDown(i, p.buf, p.frameLen());
+        } else if (crcErr) {
+            if (up) upStats.crcErrors++;
+            else    downStats[i].crcErrors++;
+        }
+    }
+}
+
 void MultiRouter::poll(unsigned long now) {
     now_ = now;
-    bool crcErr;
-    if (uplink) {
-        // Begrenzt, damit ein Dauerstrom die anderen Ports nicht aushungert
-        for (int k = 0; k < 256 && uplink->available() > 0; k++) {
-            if (upParser.feed((uint8_t)uplink->read(), crcErr))
-                fromUplink(upParser.buf, upParser.frameLen());
-            else if (crcErr) upStats.crcErrors++;
-        }
-    }
+    if (uplink) readPort(uplink, upParser, upByteMs, true, 0);
+    for (uint8_t i = 0; i < MR_MAX_DOWN; i++)
+        if (down[i]) readPort(down[i], downParser[i], downByteMs[i], false, i);
+    if (uplink) pump(upQ, uplink, upStats);
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
         if (!down[i]) continue;
-        for (int k = 0; k < 256 && down[i]->available() > 0; k++) {
-            if (downParser[i].feed((uint8_t)down[i]->read(), crcErr))
-                fromDown(i, downParser[i].buf, downParser[i].frameLen());
-            else if (crcErr) downStats[i].crcErrors++;
-        }
+        // Halbduplex: nicht senden, solange ein Frame hereinkommt
+        if (pcfg[i].halfDuplex && downParser[i].idx != 0 && downQ[i].txOff == 0) continue;
+        pump(downQ[i], down[i], downStats[i]);
     }
-    if (uplink) pump(upQ, uplink, upStats);
-    for (uint8_t i = 0; i < MR_MAX_DOWN; i++)
-        if (down[i]) pump(downQ[i], down[i], downStats[i]);
 }
 
 uint32_t MultiRouter::dropped() const {
     uint32_t n = upStats.dropped + localDropped;
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++) n += downStats[i].dropped;
+    return n;
+}
+
+uint32_t MultiRouter::filtered() const {
+    uint32_t n = 0;
+    for (uint8_t i = 0; i < MR_MAX_DOWN; i++) n += downStats[i].filtered;
     return n;
 }
 

@@ -13,6 +13,11 @@
      - von unten nach oben: alles
      - zwischen den Ports: nie (keine Schleifen)
      - nur vollstaendige Frames mit gueltiger CRC, unveraendert
+   Ab v0.4.0 je Port im Lua-Menue:
+     - Filter: RC-Kanaele und LinkStats nach unten an/aus
+     - Telemetrie nach oben: alle, hoechstens 50 ... 1 Frame/s je Sensor-Art, aus
+     - Leitung: Vollduplex (TX+RX) oder Halbduplex (nur TX-Pin, nicht Port 2)
+     - Geraeteliste: wer an welchem Port haengt (Ping beim Start und auf Abruf)
 
    ── Ports (pins.h) ────────────────────────────────────────────────────
    Uplink  = Hardware-UART0 (Serial1), TX GP0 / RX GP1, fest 420000 Baud
@@ -53,13 +58,14 @@
 #include "multi_router.h"
 #include "router_config.h"
 #include "ws2812.h"
+#include "serial_pio_hd.h"
 
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
-#define FW_MINOR 3
+#define FW_MINOR 4
 #define FW_PATCH 0
-static const char*   FW_VERSION       = "0.3.0";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 30
+static const char*   FW_VERSION       = "0.4.0";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 40
 #if defined(VARIANTE_ROUTER)
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
@@ -71,6 +77,10 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 //         Pins Port 4-6 neu, Lua-IDs ab Moduladresse um 1 nach vorn.
 // v0.3.0: zwei Varianten in pins.h: "Router" (7 Ports, alle Pins wie v0.1)
 //         und "Test" (6 Ports, nur seitliche Stiftleisten wie v0.2).
+// v0.4.0: "Version 2" der Funktionen: Filter je Port (RC-Kanaele,
+//         LinkStats), Telemetrie-Bremse je Port, Geraeteliste per Ping,
+//         Halbduplex je PIO-Port. Lua-Menue neu geordnet (neue IDs).
+//         Einstellungen aus v0.3.0 werden uebernommen.
 
 static constexpr uint32_t UPLINK_BAUD = 420000;
 static constexpr size_t   RX_FIFO     = 512;   // Software-Empfangspuffer je UART
@@ -91,6 +101,12 @@ static SerialPIO* const PIO_PORTS[PORT_COUNT] = {&uartPio1, nullptr, &uartPio3, 
 #endif
 };
 static_assert(PORT_COUNT <= MR_MAX_DOWN, "MR_MAX_DOWN zu klein");
+// TX-Pin je Port (fuer Halbduplex: ein Draht am TX-Pin)
+static const uint8_t PORT_TX_PIN[PORT_COUNT] = {PIN_P1_TX, PIN_P2_TX, PIN_P3_TX, PIN_P4_TX, PIN_P5_TX, PIN_P6_TX
+#if PORT_COUNT >= 7
+    , PIN_P7_TX
+#endif
+};
 
 // Zustand je Port: 0 aus, 1 laeuft, 2 Start fehlgeschlagen
 static constexpr uint8_t PORT_OFF = 0, PORT_RUN = 1, PORT_FAIL = 2;
@@ -136,27 +152,67 @@ static void startPorts() {
             router.setPort(1, &Serial2);
             portState[1] = PORT_RUN;
         } else {
+            // Halbduplex: eigener UART mit TX und RX auf dem TX-Pin
             SerialPIO* p = PIO_PORTS[i];
+            if (cfg.portLine[i] == LINE_HALF) p = new SerialPIOHD(PORT_TX_PIN[i], RX_FIFO);
             p->begin(baud);
             if (*p) { router.setPort(i, p); portState[i] = PORT_RUN; }
             else    { portState[i] = PORT_FAIL; Serial.printf("Port %u: kein PIO frei\n", i + 1); }
         }
+        router.setPortHalfDuplex(i, cfg.portLine[i] == LINE_HALF);
+    }
+}
+
+// Filter und Telemetrie-Bremse aus den Einstellungen (wirken sofort)
+static void applyPortFilters() {
+    for (uint8_t i = 0; i < PORT_COUNT; i++) {
+        router.setPortFilter(i, cfg.portRc[i], cfg.portLs[i]);
+        router.setTelemetry(i, TELE_RATE_MS[cfg.portTele[i]]);
+    }
+}
+
+// Geraeteliste: Ping an alle Ports kurz nach dem Start (die Geraete
+// brauchen etwas zum Hochfahren) und auf Abruf im Lua-Menue
+static unsigned long pingAtMs[2] = {2000, 6000};
+static void searchDevices() {
+    router.clearDevices();
+    router.pingPorts();
+    pingAtMs[0] = millis() + 1500; if (!pingAtMs[0]) pingAtMs[0] = 1;   // zweiter Ping fuer langsame Geraete
+    pingAtMs[1] = 0;
+}
+
+// Text fuer die Geraeteliste eines Ports, hoechstens max Zeichen
+static void portDevicesText(uint8_t i, char* buf, size_t max) {
+    if (portState[i] == PORT_OFF)  { snprintf(buf, max, "aus"); return; }
+    if (portState[i] == PORT_FAIL) { snprintf(buf, max, "Fehler"); return; }
+    uint8_t n = router.deviceCount(i);
+    if (n == 0) { snprintf(buf, max, router.portAlive(i, millis()) ? "aktiv, ohne Namen" : "kein Geraet"); return; }
+    size_t k = 0;
+    buf[0] = '\0';
+    for (uint8_t d = 0; d < n; d++) {
+        const char* nm = router.device(i, d).name;
+        size_t need = strlen(nm) + (d ? 2 : 0);
+        if (k + need >= max) {
+            snprintf(buf + k, max - k, " +%u", (unsigned)(n - d));
+            return;
+        }
+        k += snprintf(buf + k, max - k, "%s%s", d ? ", " : "", nm);
     }
 }
 
 // ======== Lua-Menue ===================================================
-//  0 Root            1 Info Version
-//  2 Ordner Ports    3.. Port 1-7 (Aus oder Baudrate), Test: Port 1-6
-// Ab hier B = 3 + PORT_COUNT (Router 10, Test 9):
-//  B   Moduladresse
-//  B+1 Ordner Telemetrie  B+2 Spannung senden  B+3 Korrektur  B+4 Info Spannung
-//                         B+5 Temperatur senden  B+6 Info Temperatur
-//  B+7 Ordner Status  B+8 Frames runter  B+9 Frames hoch  B+10 Verworfen
-//                     B+11 CRC-Fehler unten  B+12 Adresskonflikt  B+13 Ports aktiv
-//  B+14 LED Farbfolge  B+15 Neustart  B+16 Info Geraetename
-// Router: 1-26 (wie v0.1.0), Test: 1-25 (wie v0.2.0)
-static constexpr uint8_t LUA_B     = 3 + PORT_COUNT;
-static constexpr uint8_t LUA_COUNT = LUA_B + 16;
+// IDs werden beim Aufbau fortlaufend vergeben (Reihenfolge = Anzeige):
+//  1 Version
+//  2 Ordner "Ports (nach Neustart)": Port n Baudrate, dann Port n Leitung
+//    (nur PIO-Ports, Port 2 ist immer Vollduplex)
+//    Ordner "Filter": je Port ein Ordner mit RC-Kanaele, LinkStats, Telemetrie hoch
+//    Ordner "Geraete": Suchen, dann je Port die erkannten Geraete
+//    Modul Adresse
+//    Ordner "Telemetrie": Spannung senden, Korrektur, Spannung, Temperatur senden, Chiptemperatur
+//    Ordner "Status": Frames runter/hoch, Verworfen, Gefiltert, CRC-Fehler unten, Adresskonflikt, Ports aktiv
+//    LED Farbfolge, Neustart, Geraetename
+// Router (7 Ports): 71 Felder, Test (6 Ports): 64 Felder
+static constexpr uint8_t LUA_COUNT = 22 + 7 * PORT_COUNT;
 static LuaItem luaItems[LUA_COUNT + 1];
 static LuaMenu luaMenu(luaItems, sizeof(luaItems) / sizeof(luaItems[0]));
 
@@ -165,6 +221,14 @@ static void luaShowName(uint8_t, LuaView& v, char*)        { v.text = DEVICE_NAM
 
 static uint8_t luaGetPort(uint8_t a)            { return cfg.portBaud[a]; }
 static void    luaSetPort(uint8_t a, uint8_t v) { cfg.portBaud[a] = v; cfgMarkDirty(); }
+static uint8_t luaGetLine(uint8_t a)            { return cfg.portLine[a]; }
+static void    luaSetLine(uint8_t a, uint8_t v) { cfg.portLine[a] = v; cfgMarkDirty(); }
+static uint8_t luaGetRc(uint8_t a)              { return cfg.portRc[a]; }
+static void    luaSetRc(uint8_t a, uint8_t v)   { cfg.portRc[a] = v; applyPortFilters(); cfgMarkDirty(); }
+static uint8_t luaGetLs(uint8_t a)              { return cfg.portLs[a]; }
+static void    luaSetLs(uint8_t a, uint8_t v)   { cfg.portLs[a] = v; applyPortFilters(); cfgMarkDirty(); }
+static uint8_t luaGetTele(uint8_t a)            { return cfg.portTele[a]; }
+static void    luaSetTele(uint8_t a, uint8_t v) { cfg.portTele[a] = v; applyPortFilters(); cfgMarkDirty(); }
 static uint8_t luaGetAddr(uint8_t)              { return cfg.moduleAddr & 0x0F; }
 static void    luaSetAddr(uint8_t, uint8_t v)   { cfg.moduleAddr = v; crsf.setDeviceAddress(ownAddr()); router.setOwnAddress(ownAddr()); cfgMarkDirty(); }
 
@@ -179,7 +243,8 @@ static void    luaSetLed(uint8_t, uint8_t v)    { cfg.ledRgb = v; cfgMarkDirty()
 static void luaShowVolt(uint8_t, LuaView& v, char* buf) { snprintf(buf, LUA_VIEW_BUF, "%.2f V", rxVolt); v.text = buf; }
 static void luaShowTemp(uint8_t, LuaView& v, char* buf) { snprintf(buf, LUA_VIEW_BUF, "%.1f C", chipTemp); v.text = buf; }
 static void luaShowCount(uint8_t a, LuaView& v, char* buf) {
-    uint32_t n = a == 0 ? router.fwdDown() : a == 1 ? router.fwdUp() : a == 2 ? router.dropped() : router.crcErrors();
+    uint32_t n = a == 0 ? router.fwdDown() : a == 1 ? router.fwdUp() : a == 2 ? router.dropped() :
+                 a == 3 ? router.filtered() : router.crcErrors();
     snprintf(buf, LUA_VIEW_BUF, "%lu", (unsigned long)n); v.text = buf;
 }
 static void luaShowDup(uint8_t, LuaView& v, char*) { v.text = router.duplicateAddress() ? "ja" : "nein"; }
@@ -196,35 +261,71 @@ static void luaShowPorts(uint8_t, LuaView& v, char* buf) {
     buf[k ? k - 1 : 0] = '\0';
     v.text = buf;
 }
+// Geraete an Port a. Name + Text muessen in einen Parameter-Frame passen
+// (64 Bytes), deshalb hoechstens 40 Zeichen.
+static void luaShowDevices(uint8_t a, LuaView& v, char* buf) { portDevicesText(a, buf, 41); v.text = buf; }
+static uint8_t luaGetSearch(uint8_t)             { return 0; }
+static void    luaSetSearch(uint8_t, uint8_t v)  { if (v) searchDevices(); }
 static uint8_t luaGetRestart(uint8_t)            { return restartAtMs ? 1 : 0; }
 static void    luaSetRestart(uint8_t, uint8_t v) { if (v) requestRestart(); }
 
 static void buildLuaMenu() {
     static const char* AUS_EIN = "Aus;Ein";
     static const char* PORT_NAME[7] = {"Port 1", "Port 2", "Port 3", "Port 4", "Port 5", "Port 6", "Port 7"};
-    const uint8_t B = LUA_B;
+    static const char* LINE_NAME[7] = {"Port 1 Leitung", "Port 2 Leitung", "Port 3 Leitung", "Port 4 Leitung",
+                                       "Port 5 Leitung", "Port 6 Leitung", "Port 7 Leitung"};
     LuaMenu& m = luaMenu;
+    uint8_t id = 1;
     m.clear();
     m.folder(0, 0, "");
-    m.info(1, 0, "Version", "")->view = luaShowVersion;
-    m.folder(2, 0, "Ports (nach Neustart)");
+    m.info(id++, 0, "Version", "")->view = luaShowVersion;
+
+    const uint8_t fPorts = id++;
+    m.folder(fPorts, 0, "Ports (nach Neustart)");
     for (uint8_t i = 0; i < PORT_COUNT; i++)
-        m.select(3 + i, 2, PORT_NAME[i], PORT_BAUD_OPTIONS, luaGetPort, luaSetPort, i);
-    m.u8(B, 0, "Modul Adresse", 0, 15, "", luaGetAddr, luaSetAddr);
-    m.folder(B + 1, 0, "Telemetrie");
-    m.select(B + 2, B + 1, "Spannung senden", "Aus;als RxBt;als Zellen", luaGetVMode, luaSetVMode);
-    m.select(B + 3, B + 1, "Spannung Korrektur", "-0.5V;-0.4V;-0.3V;-0.2V;-0.1V;0.0V;+0.1V;+0.2V;+0.3V;+0.4V;+0.5V", luaGetVCorr, luaSetVCorr);
-    m.info(B + 4, B + 1, "Spannung", "")->view = luaShowVolt;
-    m.select(B + 5, B + 1, "Temperatur senden", AUS_EIN, luaGetTSend, luaSetTSend);
-    m.info(B + 6, B + 1, "Chiptemperatur", "")->view = luaShowTemp;
-    m.folder(B + 7, 0, "Status");
-    static const char* CNT[4] = {"Frames runter", "Frames hoch", "Verworfen", "CRC-Fehler unten"};
-    for (uint8_t a = 0; a < 4; a++) { LuaItem* it = m.info(B + 8 + a, B + 7, CNT[a], ""); it->arg = a; it->view = luaShowCount; }
-    m.info(B + 12, B + 7, "Adresskonflikt", "")->view = luaShowDup;
-    m.info(B + 13, B + 7, "Ports aktiv", "")->view = luaShowPorts;
-    m.select(B + 14, 0, "LED Farbfolge", "GRB;RGB", luaGetLed, luaSetLed);
-    m.select(B + 15, 0, "Neustart", "Nein;Jetzt", luaGetRestart, luaSetRestart);
-    m.info(B + 16, 0, "Geraetename", "")->view = luaShowName;
+        m.select(id++, fPorts, PORT_NAME[i], PORT_BAUD_OPTIONS, luaGetPort, luaSetPort, i);
+    for (uint8_t i = 0; i < PORT_COUNT; i++)
+        if (i != PORT_HW_UART) m.select(id++, fPorts, LINE_NAME[i], "Voll (TX+RX);Halb (nur TX)", luaGetLine, luaSetLine, i);
+
+    const uint8_t fFilter = id++;
+    m.folder(fFilter, 0, "Filter");
+    for (uint8_t i = 0; i < PORT_COUNT; i++) {
+        const uint8_t f = id++;
+        m.folder(f, fFilter, PORT_NAME[i]);
+        m.select(id++, f, "RC-Kanaele runter", AUS_EIN, luaGetRc, luaSetRc, i);
+        m.select(id++, f, "LinkStats runter", AUS_EIN, luaGetLs, luaSetLs, i);
+        m.select(id++, f, "Telemetrie hoch", TELE_RATE_OPTIONS, luaGetTele, luaSetTele, i);
+    }
+
+    const uint8_t fDev = id++;
+    m.folder(fDev, 0, "Geraete");
+    m.select(id++, fDev, "Geraete suchen", "Nein;Jetzt", luaGetSearch, luaSetSearch);
+    for (uint8_t i = 0; i < PORT_COUNT; i++) {
+        LuaItem* it = m.info(id++, fDev, PORT_NAME[i], "");
+        it->arg = i; it->view = luaShowDevices;
+    }
+
+    m.u8(id++, 0, "Modul Adresse", 0, 15, "", luaGetAddr, luaSetAddr);
+
+    const uint8_t fTele = id++;
+    m.folder(fTele, 0, "Telemetrie");
+    m.select(id++, fTele, "Spannung senden", "Aus;als RxBt;als Zellen", luaGetVMode, luaSetVMode);
+    m.select(id++, fTele, "Spannung Korrektur", "-0.5V;-0.4V;-0.3V;-0.2V;-0.1V;0.0V;+0.1V;+0.2V;+0.3V;+0.4V;+0.5V", luaGetVCorr, luaSetVCorr);
+    m.info(id++, fTele, "Spannung", "")->view = luaShowVolt;
+    m.select(id++, fTele, "Temperatur senden", AUS_EIN, luaGetTSend, luaSetTSend);
+    m.info(id++, fTele, "Chiptemperatur", "")->view = luaShowTemp;
+
+    const uint8_t fStat = id++;
+    m.folder(fStat, 0, "Status");
+    static const char* CNT[5] = {"Frames runter", "Frames hoch", "Verworfen", "Gefiltert", "CRC-Fehler unten"};
+    for (uint8_t a = 0; a < 5; a++) { LuaItem* it = m.info(id++, fStat, CNT[a], ""); it->arg = a; it->view = luaShowCount; }
+    m.info(id++, fStat, "Adresskonflikt", "")->view = luaShowDup;
+    m.info(id++, fStat, "Ports aktiv", "")->view = luaShowPorts;
+
+    m.select(id++, 0, "LED Farbfolge", "GRB;RGB", luaGetLed, luaSetLed);
+    m.select(id++, 0, "Neustart", "Nein;Jetzt", luaGetRestart, luaSetRestart);
+    m.info(id++, 0, "Geraetename", "")->view = luaShowName;
+    if (id - 1 != LUA_COUNT) Serial.printf("Lua: %u Felder statt %u!\n", (unsigned)(id - 1), (unsigned)LUA_COUNT);
 }
 
 // ======== Status-LED (Farben) =========================================
@@ -295,11 +396,25 @@ static void printStatus() {
     char ports[LUA_VIEW_BUF];
     LuaView v = {};
     luaShowPorts(0, v, ports);
-    Serial.printf("RC %s, LQ %u, runter %lu, hoch %lu, verworfen %lu, CRC %lu, Ports [%s], %.2f V, %.1f C\n",
+    Serial.printf("RC %s, LQ %u, runter %lu, hoch %lu, verworfen %lu, gefiltert %lu, CRC %lu, Ports [%s], %.2f V, %.1f C\n",
                   busOk ? "ok" : "fehlt", crsf.getLinkStatistics().uplinkLQ,
                   (unsigned long)router.fwdDown(), (unsigned long)router.fwdUp(),
-                  (unsigned long)router.dropped(), (unsigned long)router.crcErrors(),
-                  ports, rxVolt, chipTemp);
+                  (unsigned long)router.dropped(), (unsigned long)router.filtered(),
+                  (unsigned long)router.crcErrors(), ports, rxVolt, chipTemp);
+}
+
+// Geraeteliste auf der USB-Konsole, sobald sich etwas aendert
+static void printDevices() {
+    static uint32_t seen = 0;
+    if (router.devicesChanged() == seen) return;
+    seen = router.devicesChanged();
+    for (uint8_t i = 0; i < PORT_COUNT; i++) {
+        if (router.deviceCount(i) == 0) continue;
+        Serial.printf("Port %u:", i + 1);
+        for (uint8_t d = 0; d < router.deviceCount(i); d++)
+            Serial.printf(" %s (0x%02X)", router.device(i, d).name, router.device(i, d).addr);
+        Serial.printf("\n");
+    }
 }
 
 // ======== Setup / Loop =================================================
@@ -310,6 +425,7 @@ void setup() {
     cfgLoad();
 
     startPorts();
+    applyPortFilters();
     crsf.attach_stream(&router.local());
     crsf.setDeviceAddress(ownAddr());
     router.setOwnAddress(ownAddr());
@@ -333,6 +449,9 @@ void loop() {
     sendOwnTelemetry();
     updateLed();
     printStatus();
+    printDevices();
+    for (uint8_t k = 0; k < 2; k++)
+        if (pingAtMs[k] && (long)(now - pingAtMs[k]) >= 0) { pingAtMs[k] = 0; router.pingPorts(); }
 
     if (crsf.getDeviceInfoReplyPending() && now - crsf.getPingTime() >= slotDelayMs()) {
         crsf.setDeviceInfoReplyPending(false);

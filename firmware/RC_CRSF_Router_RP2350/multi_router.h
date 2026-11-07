@@ -6,6 +6,16 @@
 //                     (0xC8 gilt als Broadcast und geht immer weiter)
 //   Ports -> Uplink : alles
 //   Port <-> Port   : nie (keine Schleifen)
+// Ab v0.4.0 je Port einstellbar (Vorgabe: alles an, wie bisher):
+//   - Filter nach unten: RC-Kanaele (0x16/0x17), LinkStats (0x14/0x1C/0x1D)
+//   - Telemetrie nach oben (Frames < 0x28): alle, hoechstens x/s je
+//     Sensor-Art (Bremse) oder aus. Extended-Frames (DEVICE_INFO, Lua,
+//     Befehle) gehen immer hoch.
+//   - Halbduplex: der Port sendet nur, wenn die Leitung frei ist
+//     (nie mitten in einen empfangenen Frame hinein)
+//   - Geraeteliste: DEVICE_INFO-Frames von unten werden je Port gemerkt.
+//     pingPorts() fragt alle Ports aktiv ab; Antworten an die eigene
+//     Adresse bleiben im Router und gehen nicht zum Empfaenger.
 // Nur vollstaendige Frames mit gueltiger CRC, unveraendert (Store and
 // Forward). Jeder Port hat eine eigene Sendewarteschlange; gesendet wird
 // nicht blockierend Byte fuer Byte, solange der UART-FIFO Platz hat. So
@@ -27,6 +37,14 @@
 #define MR_QUEUE_DOWN    8     // Frames je Port nach unten
 #define MR_QUEUE_UP      16    // Frames zum Empfaenger (alle Ports + eigene)
 #define MR_LOCAL_BUF     512   // Bytes fuer die CRSF-Klasse (Empfang)
+#define MR_TELE_SLOTS    8     // Sensor-Arten je Port fuer die Telemetrie-Bremse
+#define MR_DEV_PER_PORT  4     // gemerkte Geraete je Port
+#define MR_DEV_NAME      24    // Zeichen je Geraetename (mit \0)
+#define MR_PARSER_TIMEOUT_MS 3 // halber Frame ohne neue Bytes -> verwerfen
+
+// Telemetrie nach oben: 0 = alle, MR_TELE_OFF = aus, sonst Mindestabstand
+// in ms je Sensor-Art
+#define MR_TELE_OFF      0xFFFF
 
 // Frame-Parser (gleicher Ablauf wie read_packets() in CRSF_ESP32)
 struct MrParser {
@@ -54,7 +72,27 @@ struct MrPortStats {
     uint32_t framesOut = 0;   // Frames komplett gesendet
     uint32_t dropped   = 0;   // wegen voller Warteschlange verworfen
     uint32_t crcErrors = 0;
+    uint32_t filtered  = 0;   // durch Filter/Telemetrie-Bremse nicht weitergegeben
     unsigned long lastRxMs = 0;   // letzter gueltiger Frame, 0 = noch keiner
+};
+
+// Ein Geraet an einem Port (aus seinem DEVICE_INFO)
+struct MrDevice {
+    uint8_t addr;               // CRSF-Adresse (Absender im DEVICE_INFO)
+    char    name[MR_DEV_NAME];
+};
+
+// Einstellungen je Port
+struct MrPortCfg {
+    bool     rc        = true;   // RC-Kanaele nach unten
+    bool     linkStats = true;   // LinkStats nach unten
+    uint16_t teleMs    = 0;      // Telemetrie nach oben, siehe MR_TELE_OFF
+    bool     halfDuplex = false;
+};
+
+struct MrTeleSlot {
+    uint8_t  type, sub, used;
+    unsigned long last;
 };
 
 class MultiRouter;
@@ -90,6 +128,19 @@ public:
     void setPort(uint8_t i, Stream* s);
     void setOwnAddress(uint8_t a) { ownAddr = a; }
 
+    // Einstellungen je Port (wirken sofort)
+    void setPortFilter(uint8_t i, bool rc, bool linkStats);
+    void setTelemetry(uint8_t i, uint16_t ms);        // 0 = alle, MR_TELE_OFF = aus
+    void setPortHalfDuplex(uint8_t i, bool hd);
+    const MrPortCfg& portCfg(uint8_t i) const { return pcfg[i]; }
+
+    // Geraeteliste
+    void    pingPorts();                              // Ping an alle aktiven Ports
+    void    clearDevices();
+    uint8_t deviceCount(uint8_t i) const { return i < MR_MAX_DOWN ? devCount[i] : 0; }
+    const MrDevice& device(uint8_t i, uint8_t k) const { return dev[i][k]; }
+    uint32_t devicesChanged() const { return devChanges; }   // zaehlt bei jeder Aenderung hoch
+
     // Jeden Loop aufrufen: lesen, weiterleiten, senden. now = millis()
     void poll(unsigned long now);
 
@@ -100,6 +151,7 @@ public:
     uint32_t fwdUp()     const { return fwdUp_; }      // Frames von unten zum Empfaenger
     uint32_t dropped()   const;                        // alle Ports + Uplink
     uint32_t crcErrors() const;                        // alle Ports nach unten
+    uint32_t filtered()  const;                        // alle Ports, durch Filter/Bremse
     bool     duplicateAddress() const { return dupAddr; }
     const MrPortStats& uplinkStats() const { return upStats; }
     const MrPortStats& portStats(uint8_t i) const { return downStats[i]; }
@@ -113,6 +165,10 @@ private:
     template <uint8_t N> void pump(MrQueue<N>& q, Stream* s, MrPortStats& st);
     void fromUplink(const uint8_t* f, uint8_t n);
     void fromDown(uint8_t i, const uint8_t* f, uint8_t n);
+    bool passDown(uint8_t i, uint8_t type);
+    bool passUp(uint8_t i, const uint8_t* f, uint8_t n);
+    void learnDevice(uint8_t i, const uint8_t* f, uint8_t n);
+    void readPort(Stream* s, MrParser& p, unsigned long& lastByte, bool up, uint8_t i);
 
     Stream*   uplink = nullptr;
     Stream*   down[MR_MAX_DOWN] = {nullptr};
@@ -122,6 +178,12 @@ private:
     MrQueue<MR_QUEUE_DOWN> downQ[MR_MAX_DOWN];
     MrPortStats upStats;
     MrPortStats downStats[MR_MAX_DOWN];
+    MrPortCfg   pcfg[MR_MAX_DOWN];
+    MrTeleSlot  tele[MR_MAX_DOWN][MR_TELE_SLOTS] = {};
+    MrDevice    dev[MR_MAX_DOWN][MR_DEV_PER_PORT] = {};
+    uint8_t     devCount[MR_MAX_DOWN] = {0};
+    uint32_t    devChanges = 0;
+    unsigned long upByteMs = 0, downByteMs[MR_MAX_DOWN] = {0};
     MrLocalStream local_;
     uint8_t  ownAddr = 0xCF;
     uint32_t fwdDown_ = 0, fwdUp_ = 0, localDropped = 0;

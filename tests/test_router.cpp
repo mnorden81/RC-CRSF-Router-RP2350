@@ -4,6 +4,8 @@
 // blockierende Senden und die Anbindung der CRSF-Klasse (Lua, Ping).
 #include <cstdio>
 #include <vector>
+#include <string>
+#include "src/RC_Common/lua_menu.h"
 #include "multi_router.h"
 #include "router_config.h"
 
@@ -171,9 +173,118 @@ static void testConfig() {
     CHECK(cfg.moduleAddr == 15 && cfg.portBaud[2] == PORT_BAUD_DEFAULT && cfg.voltCorr == 0 && cfg.voltMode == VOLT_OFF);
 }
 
+// v0.4.0: Filter nach unten je Port
+static void testDownFilter() {
+    MultiRouter r; FakeStream up, p1, p2;
+    r.begin(&up); r.setPort(0, &p1); r.setPort(1, &p2);
+    r.setPortFilter(0, false, true);    // Port 1 ohne RC-Kanaele
+    r.setPortFilter(1, true, false);    // Port 2 ohne LinkStats
+    auto rc = rcFrame();
+    auto ls = frame(0x14, std::vector<uint8_t>(10, 0x22));
+    auto ping = frame(0x28, {0x00, 0xEA});
+    up.feed(rc); up.feed(ls); up.feed(ping); r.poll(1);
+    CHECK(!contains(p1.tx, rc) && contains(p1.tx, ls) && contains(p1.tx, ping));
+    CHECK(contains(p2.tx, rc) && !contains(p2.tx, ls) && contains(p2.tx, ping));
+    CHECK(r.filtered() == 2);
+    CHECK(r.local().available() == (int)(rc.size() + ls.size() + ping.size()));   // CRSF-Klasse sieht alles
+}
+
+// v0.4.0: Telemetrie nach oben: aus, Bremse je Sensor-Art, Extended immer
+static void testTelemetryBrake() {
+    MultiRouter r; FakeStream up, p1, p2;
+    r.begin(&up); r.setPort(0, &p1); r.setPort(1, &p2);
+    r.setTelemetry(0, 100);            // hoechstens 10/s je Sensor-Art
+    r.setTelemetry(1, MR_TELE_OFF);
+    auto bat  = frame(0x08, {0, 50, 0, 0, 0, 0, 0, 0});
+    auto t1   = frame(0x0D, {1, 0, 200});   // Temperatur Quelle 1
+    auto t2   = frame(0x0D, {2, 0, 210});   // Temperatur Quelle 2
+    auto info = frame(0x29, {0xEA, 0xC3, 'M', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+    p1.feed(bat); p1.feed(bat); p1.feed(t1); p1.feed(t2); r.poll(1000);
+    CHECK(up.tx.size() == bat.size() + t1.size() + t2.size());   // zweiter Batterie-Frame gebremst
+    up.tx.clear();
+    p1.feed(bat); r.poll(1050);  CHECK(up.tx.empty());            // zu frueh
+    p1.feed(bat); r.poll(1100);  CHECK(up.tx == bat);             // 100 ms spaeter wieder
+    up.tx.clear();
+    p2.feed(bat); p2.feed(info); r.poll(2000);
+    CHECK(up.tx == info);                                         // Telemetrie aus, DEVICE_INFO geht
+    CHECK(r.portStats(1).filtered == 1 && r.portStats(0).filtered == 2);
+    r.setTelemetry(0, 0); up.tx.clear();
+    p1.feed(bat); p1.feed(bat); r.poll(2001);
+    CHECK(up.tx.size() == 2 * bat.size());                        // alle
+}
+
+static std::vector<uint8_t> devInfo(uint8_t dest, uint8_t src, const char* name) {
+    std::vector<uint8_t> pl{dest, src};
+    for (const char* c = name; *c; c++) pl.push_back((uint8_t)*c);
+    pl.push_back(0);
+    for (int i = 0; i < 14; i++) pl.push_back(0);
+    return frame(0x29, pl);
+}
+
+// v0.4.0: Geraeteliste, eigener Ping, Antworten an uns bleiben im Router
+static void testDeviceList() {
+    MultiRouter r; FakeStream up, p[3];
+    r.begin(&up); for (int i = 0; i < 3; i++) r.setPort(i, &p[i]);
+    r.setOwnAddress(0xCF);
+    r.pingPorts(); r.poll(1);
+    auto ping = frame(0x28, {0x00, 0xCF});
+    for (int i = 0; i < 3; i++) CHECK(p[i].tx == ping);
+    CHECK(up.tx.empty());
+    uint32_t ch = r.devicesChanged();
+    p[0].feed(devInfo(0xCF, 0xC3, "Multiswitch@3"));   // Antwort auf unseren Ping
+    p[2].feed(devInfo(0xEA, 0xCE, "CRSF-Router8@14")); // Antwort auf Ping vom Sender
+    p[2].feed(devInfo(0xCF, 0xC2, "Sound@2"));         // hinter dem Router 14
+    p[2].feed(devInfo(0xCF, 0xC2, "Sound@2"));         // doppelt
+    r.poll(2);
+    CHECK(r.deviceCount(0) == 1 && r.device(0, 0).addr == 0xC3 && std::string(r.device(0, 0).name) == "Multiswitch@3");
+    CHECK(r.deviceCount(1) == 0);
+    CHECK(r.deviceCount(2) == 2 && std::string(r.device(2, 1).name) == "Sound@2");
+    CHECK(r.devicesChanged() != ch);
+    CHECK(up.tx == devInfo(0xEA, 0xCE, "CRSF-Router8@14"));   // nur die an den Sender geht hoch
+    CHECK(!r.duplicateAddress());
+    r.clearDevices();
+    CHECK(r.deviceCount(0) == 0 && r.deviceCount(2) == 0);
+}
+
+// v0.4.0: Halbduplex: nicht senden, solange ein Frame hereinkommt;
+// halbe Frames verfallen nach MR_PARSER_TIMEOUT_MS
+static void testHalfDuplex() {
+    MultiRouter r; FakeStream up, p1;
+    r.begin(&up); r.setPort(0, &p1); r.setPortHalfDuplex(0, true);
+    auto tele = frame(0x08, {0, 50, 0, 0, 0, 0, 0, 0});
+    p1.feed(std::vector<uint8_t>(tele.begin(), tele.begin() + 4));   // halber Frame
+    up.feed(rcFrame()); r.poll(10);
+    CHECK(p1.tx.empty());                                            // wartet
+    p1.feed(std::vector<uint8_t>(tele.begin() + 4, tele.end())); r.poll(11);
+    CHECK(up.tx == tele && p1.tx == rcFrame());                      // Frame fertig, jetzt senden
+    // Stoerung: halber Frame, dann Ruhe -> nach Timeout wieder senden
+    p1.tx.clear();
+    p1.feed({0xC8, 0x0A, 0x08}); up.feed(rcFrame()); r.poll(20);
+    CHECK(p1.tx.empty());
+    r.poll(20 + MR_PARSER_TIMEOUT_MS + 1);
+    CHECK(p1.tx == rcFrame());
+}
+
+static void testConfigV4() {
+    cfgDefaults();
+    CHECK(cfg.portRc[0] == 1 && cfg.portLs[6] == 1 && cfg.portTele[3] == 0 && cfg.portLine[2] == LINE_FULL);
+    cfg.portLine[PORT_HW_UART] = LINE_HALF; cfg.portLine[3] = LINE_HALF; cfg.portTele[0] = 99; cfg.portRc[1] = 7;
+    cfgSanitize();
+    CHECK(cfg.portLine[PORT_HW_UART] == LINE_FULL && cfg.portLine[3] == LINE_HALF);   // Port 2 nur Vollduplex
+    CHECK(cfg.portTele[0] == 0 && cfg.portRc[1] == 1);
+    CHECK(TELE_RATE_MS[TELE_RATE_COUNT - 1] == MR_TELE_OFF && LuaMenu::optionCount(TELE_RATE_OPTIONS) == TELE_RATE_COUNT);
+    // Einstellungen von v0.3.0 uebernehmen
+    uint8_t old[12] = {13, 1, 2, 3, 0, 4, 5, 2, 2, (uint8_t)-3, 1, 1};
+    cfgFromV3(old, sizeof(old));
+    CHECK(cfg.moduleAddr == 13 && cfg.portBaud[0] == 1 && cfg.portBaud[3] == 0 && cfg.portBaud[6] == 2);
+    CHECK(cfg.voltMode == 2 && cfg.voltCorr == -3 && cfg.tempSend == 1 && cfg.ledRgb == 1);
+    CHECK(cfg.portRc[4] == 1 && cfg.portLine[4] == LINE_FULL);
+}
+
 int main() {
     testDownBroadcast(); testOwnAddressStaysLocal(); testUpAndNoCrossTalk(); testCrcAndGarbage();
     testDuplicateAddress(); testNonBlockingPump(); testQueueOverflow(); testLocalCrsf(); testConfig();
+    testDownFilter(); testTelemetryBrake(); testDeviceList(); testHalfDuplex(); testConfigV4();
     printf("%d Pruefungen, %d Fehler\n", checks, fails);
     return fails ? 1 : 0;
 }

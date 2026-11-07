@@ -9,7 +9,7 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 | **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
 | **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | [hardware/Test](hardware/Test/) |
 
-> Stand: Firmware **v0.3.0**, kompiliert und mit Host-Tests geprüft. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis.
+> Stand: Firmware **v0.4.0** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste, Halbduplex), kompiliert und mit Host-Tests geprüft, **noch nicht auf Hardware getestet**. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis.
 
 | Testaufbau | RP2350-Zero auf dem Steckbrett |
 |---|---|
@@ -25,6 +25,19 @@ Der Router hängt an einem freien CRSF-Port des Empfängers und verteilt CRSF au
 - Weitergegeben werden nur vollständige Frames mit gültiger CRC, unverändert.
 - Jeder Port hat eine eigene Warteschlange und sendet nicht blockierend. Ein langsamer Port bremst die anderen nicht aus. Wird es eng, fällt zuerst ein alter RC-Frame weg, Lua-Antworten bleiben erhalten.
 
+### Neu in v0.4.0 („Version 2“)
+
+Die Ideen stammen aus dem Vergleich mit dem CRSF-Switch von Wilhelm Meier (wmucpp). Ohne Änderung im Lua-Menü verhält sich der Router genau wie v0.3.0.
+
+| Funktion | Was sie macht | Wirkt |
+|---|---|---|
+| **Filter je Port** | RC-Kanäle (0x16/0x17) und LinkStats (0x14/0x1C/0x1D) nach unten je Port an oder aus. Ping, Lua und Schaltbefehle gehen immer durch. | sofort |
+| **Telemetrie-Bremse je Port** | Telemetrie von unten nach oben: alle, höchstens 50/20/10/5/2/1 Frames pro Sekunde **je Sensor-Art**, oder aus. Bei RPM, Temperatur und Zellen zählt jede Quelle einzeln. DEVICE_INFO und Lua-Antworten gehen immer hoch. | sofort |
+| **Geräteliste** | Der Router fragt 2 s und 6 s nach dem Start alle Ports per Ping ab und merkt sich die Antworten (bis 4 Geräte je Port, auch hinter einem weiteren Router). Lua-Ordner „Geräte“ zeigt sie, „Geräte suchen“ fragt neu ab. Antworten auf den eigenen Ping bleiben im Router. Die USB-Konsole listet jede Änderung. | sofort |
+| **Halbduplex je Port** | Port 1 und 3–7 (PIO-Ports) können auf einem Draht arbeiten: Signal des Geräts an den **TX-Pin** des Ports, RX-Pin bleibt frei. Der Router sendet nur bei freier Leitung und lässt dem Gerät nach jedem Frame 0,6 ms Zeit zum Antworten. Port 2 (Hardware-UART) kann nur Vollduplex. | nach Neustart |
+
+Zum Merken: Schaltet man an einem Port die RC-Kanäle ab, sieht ein Gerät dort (auch ein weiterer Router) kein RC-Signal mehr und geht in Failsafe. Halbduplex ist nur für Geräte gedacht, die selbst Halbduplex sprechen (ein Draht für beide Richtungen, nicht invertiert).
+
 ## Status-LED (RGB-LED auf dem Board)
 
 | LED | Bedeutung |
@@ -37,31 +50,37 @@ Sind Rot und Grün vertauscht, im Lua-Menü „LED Farbfolge“ auf **RGB** stel
 
 ## Lua-Menü (ELRS Lua / TBS Agent)
 
-| ID | Eintrag | Werte |
-|---|---|---|
-IDs der Version **Router**. Bei der Version **Test** fehlt Port 7, alle IDs ab „Modul Adresse“ sind dann um 1 kleiner (9–25).
+Ab v0.4.0 werden die Feld-IDs fortlaufend vergeben, sie haben sich gegenüber v0.3.0 verschoben (nur wichtig für eigene Skripte). Die Einstellungen aus v0.3.0 übernimmt der Router beim ersten Start.
 
-| ID | Eintrag | Werte |
-|---|---|---|
-| 1 | Version | z. B. „0.3.0 Router“ |
-| 2 | Ordner **Ports (nach Neustart)** | |
-| 3–9 | Port 1 … Port 7 | Aus, 57600, 115200, 400000, **420000**, 921600 |
-| 10 | Modul Adresse | 0–15, Vorgabe **15** |
-| 11 | Ordner **Telemetrie** | |
-| 12 | Spannung senden | **Aus**, als RxBt, als Zellen |
-| 13 | Spannung Korrektur | −0,5 … +0,5 V |
-| 14 | Spannung | Anzeige |
-| 15 | Temperatur senden | **Aus**, Ein |
-| 16 | Chiptemperatur | Anzeige |
-| 17 | Ordner **Status** | |
-| 18–21 | Frames runter / hoch / verworfen / CRC-Fehler unten | Zähler |
-| 22 | Adresskonflikt | ja/nein |
-| 23 | Ports aktiv | je Port: Nummer = Gerät antwortet, `.` still, `-` aus, `!` Fehler |
-| 24 | LED Farbfolge | **GRB**, RGB |
-| 25 | Neustart | Nein, Jetzt |
-| 26 | Gerätename | „CRSF-Router8“ bzw. „CRSF-Router8 Test“ |
+| Eintrag | Werte |
+|---|---|
+| Version | z. B. „0.4.0 Router“ |
+| Ordner **Ports (nach Neustart)** | |
+| ↳ Port 1 … Port 7 | Aus, 57600, 115200, 400000, **420000**, 921600 |
+| ↳ Port 1 Leitung, Port 3 … 7 Leitung | **Voll (TX+RX)**, Halb (nur TX) |
+| Ordner **Filter** → je Port ein Ordner | |
+| ↳ RC-Kanaele runter | Aus, **Ein** |
+| ↳ LinkStats runter | Aus, **Ein** |
+| ↳ Telemetrie hoch | **Alle**, 50/s, 20/s, 10/s, 5/s, 2/s, 1/s, Aus |
+| Ordner **Geraete** | |
+| ↳ Geraete suchen | Nein, Jetzt |
+| ↳ Port 1 … Port 7 | Anzeige, z. B. „Multiswitch@3, Sound@2“, „kein Geraet“, „aus“ |
+| Modul Adresse | 0–15, Vorgabe **15** |
+| Ordner **Telemetrie** | |
+| ↳ Spannung senden | **Aus**, als RxBt, als Zellen |
+| ↳ Spannung Korrektur | −0,5 … +0,5 V |
+| ↳ Spannung | Anzeige |
+| ↳ Temperatur senden | **Aus**, Ein |
+| ↳ Chiptemperatur | Anzeige |
+| Ordner **Status** | |
+| ↳ Frames runter / hoch / Verworfen / Gefiltert / CRC-Fehler unten | Zähler |
+| ↳ Adresskonflikt | ja/nein |
+| ↳ Ports aktiv | je Port: Nummer = Gerät antwortet, `.` still, `-` aus, `!` Fehler |
+| LED Farbfolge | **GRB**, RGB |
+| Neustart | Nein, Jetzt |
+| Geraetename | „CRSF-Router8“ bzw. „CRSF-Router8 Test“ |
 
-Im Sender erscheint der Router als **CRSF-Router8@15** bzw. **CRSF-Router8 Test@15** (Name@Adresse).
+Router: 71 Felder, Test: 64 Felder (Port 7 fehlt überall). Im Sender erscheint der Router als **CRSF-Router8@15** bzw. **CRSF-Router8 Test@15** (Name@Adresse).
 
 ## Mehrere Router
 
@@ -72,7 +91,7 @@ Jeder Router hat eine eigene WM-Adresse (0–15 → CRSF 0xC0 + Adresse). Mehrer
 | Port | Router TX | Router RX | Test TX | Test RX | Art |
 |---|---|---|---|---|---|
 | Uplink (Empfänger) | GP0 | GP1 | GP0 | GP1 | Hardware-UART, fest 420000 Baud |
-| Port 1 | GP2 | GP3 | GP2 | GP3 | PIO-UART |
+| Port 1 | GP2 | GP3 | GP2 | GP3 | PIO-UART (Halbduplex möglich) |
 | Port 2 | GP4 | GP5 | GP4 | GP5 | Hardware-UART |
 | Port 3 | GP6 | GP7 | GP6 | GP7 | PIO-UART |
 | Port 4 | GP8 | GP9 | GP8 | GP14 | PIO-UART |
@@ -83,7 +102,7 @@ Jeder Router hat eine eigene WM-Adresse (0–15 → CRSF 0xC0 + Adresse). Mehrer
 
 Lage am Board (Oberseite, USB oben): rechte Leiste GP0–GP8, untere Kante GP9–GP13 (nur Lötpads), linke Leiste 5V, GND, 3V3, GP29, GP28, GP27, GP26, GP15, GP14. Die **Router**-Version braucht die Pads unten (5er-Stiftleiste einlöten), die **Test**-Version kommt mit den beiden seitlichen Leisten aus. Mehr als 8 UARTs (2 Hardware + 6 PIO) schafft der RP2350 nicht, deshalb sind 7 Ports das Maximum.
 
-TX des Routers an RX des Geräts und umgekehrt, GND gemeinsam. Details und Schaltplan: [hardware/README.md](hardware/README.md).
+TX des Routers an RX des Geräts und umgekehrt, GND gemeinsam. Bei **Halbduplex** (Port 1, 3–7) kommt der eine Signaldraht des Geräts an den TX-Pin des Ports, der RX-Pin bleibt frei. Details und Schaltplan: [hardware/README.md](hardware/README.md).
 
 ## Flashen
 

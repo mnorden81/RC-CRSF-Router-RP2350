@@ -7,8 +7,9 @@ Arduino-Sketch für den Waveshare RP2350-Zero, Core **arduino-pico 6.3.2** (Earl
 | Datei | Inhalt |
 |---|---|
 | `RC_CRSF_Router_RP2350.ino` | Start der Ports, Lua-Menü, LED, Telemetrie, Hauptschleife |
-| `multi_router.*` | Router mit Uplink + bis zu 7 Ports: Frame-Parser, Warteschlangen, nicht blockierendes Senden, Anbindung der CRSF-Klasse |
+| `multi_router.*` | Router mit Uplink + bis zu 7 Ports: Frame-Parser, Warteschlangen, nicht blockierendes Senden, Anbindung der CRSF-Klasse; ab v0.4.0 Filter, Telemetrie-Bremse, Geräteliste und Halbduplex-Regeln je Port |
 | `router_config.*` | Einstellungen im Flash (EEPROM-Emulation, mit Prüfsumme) |
+| `serial_pio_hd.*` | Halbduplex-UART auf einem Pin (SerialPIO mit eigener Umschaltung des Pin-Treibers, verwirft das eigene Echo) |
 | `ws2812.*` | RGB-LED ohne PIO (alle PIO-Einheiten sind von den UARTs belegt) |
 | `pins.h` | Pinbelegung und Auswahl der Version (`VARIANTE_ROUTER` oder `VARIANTE_TEST`) |
 | `src/RC_Common/` | Auszug aus RC_Common 1.2.0 (siehe unten) |
@@ -42,9 +43,21 @@ Gegenüber RC_Common 1.2.0 gibt es drei kleine Anpassungen, alle mit „RP2350-K
 
 Für die ESP32-Projekte ändert sich dadurch nichts. Vorschlag: die drei Punkte bei der nächsten RC_Common-Version (1.3.0) in alle Kopien übernehmen, dann ist auch diese Kopie wieder identisch.
 
-## Grenzen von v0.3.0
+## Halbduplex (ab v0.4.0)
+
+arduino-pico 6.3.2 kann keinen Halbduplex-UART. `SerialPIOHD` startet einen normalen `SerialPIO` mit TX und RX auf demselben Pin und schaltet den Pin-Treiber per GPIO-Override um:
+
+1. Ruhe: Pin ist Eingang mit Pull-up, das Gerät darf senden.
+2. Senden nur bei freier Leitung: 3 Bytezeiten ohne Empfang und 0,6 ms nach dem eigenen letzten Frame. Zusätzlich sendet der Router nie, solange der Parser des Ports mitten in einem Frame steckt.
+3. Ein ganzer Frame wird am Stück getrieben (Ende erkennt die Klasse am Längenbyte), danach wird der Pin losgelassen und das eigene Echo verworfen.
+
+Ein halb empfangener Frame verfällt nach 3 ms ohne neue Bytes (gilt für alle Ports), damit ein Halbduplex-Port nach einer Störung nicht hängen bleibt.
+
+## Grenzen von v0.4.0
 
 - Alle Ports nur CRSF. S.Port und GPS an den Ports sind noch nicht eingebaut.
 - Kein WLAN, keine WebUI, Bedienung nur über Lua. Updates per USB.
 - Speichern einer Einstellung blockiert den Chip einige Millisekunden (Flash). Dabei können einzelne Frames verloren gehen; gespeichert wird nur nach Änderungen im Lua-Menü.
-- Nicht auf Hardware getestet: PIO-Belegung Router (12 von 12 State-Machines), Timing der Software-LED, Durchsatz bei 7 aktiven Ports. Die Test-Version (10 von 12) wurde am 05.11.2026 vom Sender erkannt.
+- Keine Adressumsetzung (NAT) und kein Weiterleiten von Port zu Port: jedes Gerät braucht weiter eine eigene Adresse.
+- Halbduplex nicht invertiert und nur an PIO-Ports.
+- Nicht auf Hardware getestet: alle Neuerungen von v0.4.0 (besonders Halbduplex-Timing), PIO-Belegung Router (12 von 12 State-Machines), Timing der Software-LED, Durchsatz bei 7 aktiven Ports. Die Test-Version (10 von 12) wurde am 05.11.2026 vom Sender erkannt (v0.2.0).
