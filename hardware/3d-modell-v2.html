@@ -1,0 +1,236 @@
+<title>CRSF-Router 8 V2 in 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: Werkbank-Ansicht. 3D-Fläche oben, darunter Bedienleiste und Stückliste. */
+:root{
+  --bg:#eef1ee; --panel:#ffffff; --fg:#17201b; --muted:#5b6a61; --line:#d3dbd5; --accent:#0d6b3c; --accent-fg:#ffffff;
+  --stage:#dfe5e0;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111714;--panel:#18201b;--fg:#e4ebe6;--muted:#93a399;--line:#2b362f;--accent:#3fbf7a;--accent-fg:#06140c;--stage:#0c110e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111714;--panel:#18201b;--fg:#e4ebe6;--muted:#93a399;--line:#2b362f;--accent:#3fbf7a;--accent-fg:#06140c;--stage:#0c110e;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
+.wrap{max-width:1100px;margin:0 auto;display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-size:1.5rem;margin:0;font-weight:600;text-wrap:balance}
+.sub{color:var(--muted);margin:4px 0 0;font-size:.95rem;max-width:65ch}
+.stage{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:10px;overflow:hidden;aspect-ratio:16/10;max-width:100%;min-height:300px}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.hint{position:absolute;left:12px;bottom:10px;font:12px var(--mono);color:var(--muted);pointer-events:none}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+button{font:600 13px var(--sans);padding:8px 14px;border:0;background:var(--panel);color:var(--fg);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lbl{font:600 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.cols{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.cols{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.card h2{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{text-align:left;padding:5px 8px 5px 0;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:12px}
+td.m{font-family:var(--mono);white-space:nowrap}
+ul{margin:0;padding-left:18px;font-size:14px;line-height:1.5}
+li+li{margin-top:6px}
+</style>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>CRSF-Router 8, Platine Variante 2 (THT)</h1>
+      <p class="sub">Erstes 3D-Modell aus der KiCad-Platzierung, 70 × 45 mm, alles bedrahtet. Maße und Positionen stammen aus der Platine, die Bauteilkörper sind vereinfacht. Noch ohne Leiterbahnen.</p>
+    </div>
+  </header>
+  <div class="stage" id="stage"><span class="hint">Ziehen = drehen · Rad/Pinch = zoomen · Rechts/zwei Finger = schieben</span></div>
+  <div class="bar">
+    <span class="lbl">Version</span>
+    <span class="seg" role="group" aria-label="Version"><button id="vR" aria-pressed="true">Router · 7 Ports</button><button id="vT" aria-pressed="false">Test · 6 Ports</button></span>
+    <span class="lbl" style="margin-left:8px">Ansicht</span>
+    <span class="seg" role="group" aria-label="Ansicht"><button id="cIso">Schräg</button><button id="cTop">Oben</button><button id="cSide">Seite</button></span>
+    <span class="seg"><button id="tZero" aria-pressed="true">RP2350-Zero gesteckt</button></span>
+  </div>
+  <div class="cols">
+    <div class="card"><h2>Stückliste dieser Version</h2><div class="tbl"><table id="bom"><thead><tr><th>Ref</th><th>Wert</th><th>Bauform</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><h2>Was V2 anders macht</h2><ul>
+      <li>Nur THT-Bauteile, von Hand lötbar: Elko, Kondensator, Widerstände und Dioden bedrahtet.</li>
+      <li>Ohne Spannungsregler: der RP2350-Zero bekommt das BEC über die Diode D1 an seinen 5-V-Pin. Deshalb nur BEC mit 5 bis 6 V, kein HV-BEC.</li>
+      <li>Eine Sicherung (PTC 3 A) für alle Ports statt je Port eine, keine Lötbrücken und keine Serienwiderstände mehr. Das sind 9 Bauteile statt über 30.</li>
+      <li>BEC-Eingang J9 mit Suppressordiode P6KE15CA gegen Spannungsspitzen, Platine 70 × 45 mm mit 4 × M3.</li>
+      <li>RP2350-Zero steckt in Buchsenleisten (Router: auch unten 5er-Buchse für GP9–GP13).</li>
+    </ul></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const DATA={"Router":[{"r":"J2","v":"Port 1","f":"PinHeader_1x04_Rail","x":57.6,"y":16.54,"p":[[57.6,16.54,1.7,1.0,1,"1"],[60.14,16.54,1.7,1.0,0,"2"],[62.68,16.54,1.7,1.0,0,"3"],[65.22,16.54,1.7,1.0,0,"4"]]},{"r":"J9","v":"BEC IN","f":"PinHeader_1x02_P2.54mm_Vertical","x":4.0,"y":5.0,"p":[[4.0,5.0,1.7,1.0,1,"1"],[6.54,5.0,1.7,1.0,0,"2"]]},{"r":"D1","v":"1N5819","f":"D_DO-41_SOD81_P10.16mm_Horizontal","x":40.0,"y":4.0,"p":[[40.0,4.0,2.2,1.1,1,"1"],[50.16,4.0,2.2,1.1,0,"2"]]},{"r":"J7","v":"Port 6","f":"PinHeader_1x04_Rail","x":57.6,"y":29.24,"p":[[57.6,29.24,1.7,1.0,1,"1"],[60.14,29.24,1.7,1.0,0,"2"],[62.68,29.24,1.7,1.0,0,"3"],[65.22,29.24,1.7,1.0,0,"4"]]},{"r":"F1","v":"PTC 3A/16V MF-RG300","f":"Fuse_Bourns_MF-RG300","x":31.0,"y":16.0,"p":[[31.0,16.0,2.01,1.01,0,"1"],[36.1,17.2,2.01,1.01,0,"2"]]},{"r":"H3","v":"M3","f":"MountingHole_3.2mm_M3","x":66.5,"y":41.5,"p":[[66.5,41.5,3.2,3.2,0,""]]},{"r":"C4","v":"100n","f":"C_Disc_D5.0mm_W2.5mm_P5.00mm","x":31.0,"y":32.0,"p":[[31.0,32.0,1.6,0.8,0,"1"],[36.0,32.0,1.6,0.8,0,"2"]]},{"r":"J8","v":"Port 7","f":"PinHeader_1x04_Rail","x":57.6,"y":31.78,"p":[[57.6,31.78,1.7,1.0,1,"1"],[60.14,31.78,1.7,1.0,0,"2"],[62.68,31.78,1.7,1.0,0,"3"],[65.22,31.78,1.7,1.0,0,"4"]]},{"r":"H1","v":"M3","f":"MountingHole_3.2mm_M3","x":3.5,"y":41.5,"p":[[3.5,41.5,3.2,3.2,0,""]]},{"r":"J5","v":"Port 4","f":"PinHeader_1x04_Rail","x":57.6,"y":24.16,"p":[[57.6,24.16,1.7,1.0,1,"1"],[60.14,24.16,1.7,1.0,0,"2"],[62.68,24.16,1.7,1.0,0,"3"],[65.22,24.16,1.7,1.0,0,"4"]]},{"r":"H2","v":"M3","f":"MountingHole_3.2mm_M3","x":66.5,"y":3.5,"p":[[66.5,3.5,3.2,3.2,0,""]]},{"r":"D2","v":"P6KE15CA","f":"D_DO-15_P10.16mm_Horizontal","x":24.0,"y":4.0,"p":[[24.0,4.0,2.4,1.2,1,"1"],[34.16,4.0,2.4,1.2,0,"2"]]},{"r":"U1","v":"RP2350-Zero","f":"RP2350-Zero_Socket","x":11.75,"y":27.0,"p":[[1.59,34.62,1.7,1.0,1,"1"],[4.13,34.62,1.7,1.0,0,"2"],[6.67,34.62,1.7,1.0,0,"3"],[9.21,34.62,1.7,1.0,0,"4"],[11.75,34.62,1.7,1.0,0,"5"],[14.29,34.62,1.7,1.0,0,"6"],[16.83,34.62,1.7,1.0,0,"7"],[19.37,34.62,1.7,1.0,0,"8"],[21.91,34.62,1.7,1.0,0,"9"],[21.91,32.08,1.7,1.0,0,"10"],[21.91,29.54,1.7,1.0,0,"11"],[21.91,27.0,1.7,1.0,0,"12"],[21.91,24.46,1.7,1.0,0,"13"],[21.91,21.92,1.7,1.0,0,"14"],[21.91,19.38,1.7,1.0,0,"15"],[19.37,19.38,1.7,1.0,0,"16"],[16.83,19.38,1.7,1.0,0,"17"],[14.29,19.38,1.7,1.0,0,"18"],[11.75,19.38,1.7,1.0,0,"19"],[9.21,19.38,1.7,1.0,0,"20"],[6.67,19.38,1.7,1.0,0,"21"],[4.13,19.38,1.7,1.0,0,"22"],[1.59,19.38,1.7,1.0,0,"23"]]},{"r":"J4","v":"Port 3","f":"PinHeader_1x04_Rail","x":57.6,"y":21.62,"p":[[57.6,21.62,1.7,1.0,1,"1"],[60.14,21.62,1.7,1.0,0,"2"],[62.68,21.62,1.7,1.0,0,"3"],[65.22,21.62,1.7,1.0,0,"4"]]},{"r":"H4","v":"M3","f":"MountingHole_3.2mm_M3","x":46.0,"y":41.5,"p":[[46.0,41.5,3.2,3.2,0,""]]},{"r":"C1","v":"220u/16V","f":"CP_Radial_D8.0mm_P3.50mm","x":15.5,"y":6.5,"p":[[15.5,6.5,1.6,0.8,1,"1"],[19.0,6.5,1.6,0.8,0,"2"]]},{"r":"R2","v":"10k","f":"R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal","x":31.0,"y":27.5,"p":[[31.0,27.5,1.6,0.8,0,"1"],[41.16,27.5,1.6,0.8,0,"2"]]},{"r":"J3","v":"Port 2","f":"PinHeader_1x04_Rail","x":57.6,"y":19.08,"p":[[57.6,19.08,1.7,1.0,1,"1"],[60.14,19.08,1.7,1.0,0,"2"],[62.68,19.08,1.7,1.0,0,"3"],[65.22,19.08,1.7,1.0,0,"4"]]},{"r":"R1","v":"33k","f":"R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal","x":31.0,"y":23.0,"p":[[31.0,23.0,1.6,0.8,0,"1"],[41.16,23.0,1.6,0.8,0,"2"]]},{"r":"J1","v":"Uplink Empfaenger","f":"PinHeader_1x04_Rail","x":57.6,"y":14.0,"p":[[57.6,14.0,1.7,1.0,1,"1"],[60.14,14.0,1.7,1.0,0,"2"],[62.68,14.0,1.7,1.0,0,"3"],[65.22,14.0,1.7,1.0,0,"4"]]},{"r":"J6","v":"Port 5","f":"PinHeader_1x04_Rail","x":57.6,"y":26.7,"p":[[57.6,26.7,1.7,1.0,1,"1"],[60.14,26.7,1.7,1.0,0,"2"],[62.68,26.7,1.7,1.0,0,"3"],[65.22,26.7,1.7,1.0,0,"4"]]}],"Test":[{"r":"J3","v":"Port 2","f":"PinHeader_1x04_Rail","x":57.6,"y":20.35,"p":[[57.6,20.35,1.7,1.0,1,"1"],[60.14,20.35,1.7,1.0,0,"2"],[62.68,20.35,1.7,1.0,0,"3"],[65.22,20.35,1.7,1.0,0,"4"]]},{"r":"F1","v":"PTC 3A/16V MF-RG300","f":"Fuse_Bourns_MF-RG300","x":31.0,"y":16.0,"p":[[31.0,16.0,2.01,1.01,0,"1"],[36.1,17.2,2.01,1.01,0,"2"]]},{"r":"J5","v":"Port 4","f":"PinHeader_1x04_Rail","x":57.6,"y":25.43,"p":[[57.6,25.43,1.7,1.0,1,"1"],[60.14,25.43,1.7,1.0,0,"2"],[62.68,25.43,1.7,1.0,0,"3"],[65.22,25.43,1.7,1.0,0,"4"]]},{"r":"H3","v":"M3","f":"MountingHole_3.2mm_M3","x":66.5,"y":41.5,"p":[[66.5,41.5,3.2,3.2,0,""]]},{"r":"R1","v":"33k","f":"R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal","x":31.0,"y":23.0,"p":[[31.0,23.0,1.6,0.8,0,"1"],[41.16,23.0,1.6,0.8,0,"2"]]},{"r":"J2","v":"Port 1","f":"PinHeader_1x04_Rail","x":57.6,"y":17.81,"p":[[57.6,17.81,1.7,1.0,1,"1"],[60.14,17.81,1.7,1.0,0,"2"],[62.68,17.81,1.7,1.0,0,"3"],[65.22,17.81,1.7,1.0,0,"4"]]},{"r":"C1","v":"220u/16V","f":"CP_Radial_D8.0mm_P3.50mm","x":15.5,"y":6.5,"p":[[15.5,6.5,1.6,0.8,1,"1"],[19.0,6.5,1.6,0.8,0,"2"]]},{"r":"J1","v":"Uplink Empfaenger","f":"PinHeader_1x04_Rail","x":57.6,"y":15.27,"p":[[57.6,15.27,1.7,1.0,1,"1"],[60.14,15.27,1.7,1.0,0,"2"],[62.68,15.27,1.7,1.0,0,"3"],[65.22,15.27,1.7,1.0,0,"4"]]},{"r":"J7","v":"Port 6","f":"PinHeader_1x04_Rail","x":57.6,"y":30.51,"p":[[57.6,30.51,1.7,1.0,1,"1"],[60.14,30.51,1.7,1.0,0,"2"],[62.68,30.51,1.7,1.0,0,"3"],[65.22,30.51,1.7,1.0,0,"4"]]},{"r":"J6","v":"Port 5","f":"PinHeader_1x04_Rail","x":57.6,"y":27.97,"p":[[57.6,27.97,1.7,1.0,1,"1"],[60.14,27.97,1.7,1.0,0,"2"],[62.68,27.97,1.7,1.0,0,"3"],[65.22,27.97,1.7,1.0,0,"4"]]},{"r":"H2","v":"M3","f":"MountingHole_3.2mm_M3","x":66.5,"y":3.5,"p":[[66.5,3.5,3.2,3.2,0,""]]},{"r":"J4","v":"Port 3","f":"PinHeader_1x04_Rail","x":57.6,"y":22.89,"p":[[57.6,22.89,1.7,1.0,1,"1"],[60.14,22.89,1.7,1.0,0,"2"],[62.68,22.89,1.7,1.0,0,"3"],[65.22,22.89,1.7,1.0,0,"4"]]},{"r":"H4","v":"M3","f":"MountingHole_3.2mm_M3","x":46.0,"y":41.5,"p":[[46.0,41.5,3.2,3.2,0,""]]},{"r":"R2","v":"10k","f":"R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal","x":31.0,"y":27.5,"p":[[31.0,27.5,1.6,0.8,0,"1"],[41.16,27.5,1.6,0.8,0,"2"]]},{"r":"D1","v":"1N5819","f":"D_DO-41_SOD81_P10.16mm_Horizontal","x":40.0,"y":4.0,"p":[[40.0,4.0,2.2,1.1,1,"1"],[50.16,4.0,2.2,1.1,0,"2"]]},{"r":"C4","v":"100n","f":"C_Disc_D5.0mm_W2.5mm_P5.00mm","x":31.0,"y":32.0,"p":[[31.0,32.0,1.6,0.8,0,"1"],[36.0,32.0,1.6,0.8,0,"2"]]},{"r":"D2","v":"P6KE15CA","f":"D_DO-15_P10.16mm_Horizontal","x":24.0,"y":4.0,"p":[[24.0,4.0,2.4,1.2,1,"1"],[34.16,4.0,2.4,1.2,0,"2"]]},{"r":"J9","v":"BEC IN","f":"PinHeader_1x02_P2.54mm_Vertical","x":4.0,"y":5.0,"p":[[4.0,5.0,1.7,1.0,1,"1"],[6.54,5.0,1.7,1.0,0,"2"]]},{"r":"H1","v":"M3","f":"MountingHole_3.2mm_M3","x":3.5,"y":41.5,"p":[[3.5,41.5,3.2,3.2,0,""]]},{"r":"U1","v":"RP2350-Zero","f":"RP2350-Zero_Socket","x":11.75,"y":27.0,"p":[[1.59,34.62,1.7,1.0,1,"1"],[4.13,34.62,1.7,1.0,0,"2"],[6.67,34.62,1.7,1.0,0,"3"],[9.21,34.62,1.7,1.0,0,"4"],[11.75,34.62,1.7,1.0,0,"5"],[14.29,34.62,1.7,1.0,0,"6"],[16.83,34.62,1.7,1.0,0,"7"],[19.37,34.62,1.7,1.0,0,"8"],[21.91,34.62,1.7,1.0,0,"9"],[21.91,32.08,1.7,1.0,0,"10"],[21.91,29.54,1.7,1.0,0,"11"],[21.91,27.0,1.7,1.0,0,"12"],[21.91,24.46,1.7,1.0,0,"13"],[21.91,21.92,1.7,1.0,0,"14"],[21.91,19.38,1.7,1.0,0,"15"],[19.37,19.38,1.7,1.0,0,"16"],[16.83,19.38,1.7,1.0,0,"17"],[14.29,19.38,1.7,1.0,0,"18"],[11.75,19.38,1.7,1.0,0,"19"],[9.21,19.38,1.7,1.0,0,"20"],[6.67,19.38,1.7,1.0,0,"21"],[4.13,19.38,1.7,1.0,0,"22"],[1.59,19.38,1.7,1.0,0,"23"]]}]};const W=70,H=45,T=1.6;
+const stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+stage.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(22,1.6,1,1000);
+const ctl=new THREE.OrbitControls(cam,renderer.domElement);
+ctl.enableDamping=true;ctl.target.set(0,4,0);
+scene.add(new THREE.HemisphereLight(0xffffff,0x445544,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,0.75);sun.position.set(-40,90,60);scene.add(sun);
+const fill=new THREE.DirectionalLight(0xffffff,0.25);fill.position.set(50,30,-60);scene.add(fill);
+const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.6,metalness:0},o));
+const mat={black:M(0x1c1c1c),gold:M(0xd4b15a,{metalness:.8,roughness:.3}),tin:M(0xc8c8c8,{metalness:.8,roughness:.35}),
+ blueCap:M(0x2a4fa8),elko:M(0x1d2f6b),stripe:M(0xbfc6d6),beige:M(0xd9c49a),diode:M(0x222222),band:M(0xc0c0c0),
+ yellow:M(0xe0b31a),zeroPcb:M(0x111111,{roughness:.5}),chip:M(0x2a2a2a,{roughness:.4}),usb:M(0xb8b8b8,{metalness:.9,roughness:.25}),
+ green:M(0x0f5a33,{roughness:.55}),edge:M(0xc9c09a,{roughness:.8}),orange:M(0xe2a33a)};
+// Koordinaten: KiCad x->X, y->Z, oben = +Y
+const X=x=>x-W/2, Z=y=>y-H/2;
+let group=null, zeroGroup=null, cur='Router';
+
+function boardTexture(fps,variant){
+  const s=24,c=document.createElement('canvas');c.width=W*s;c.height=H*s;const g=c.getContext('2d');
+  g.fillStyle='#0f5a33';g.fillRect(0,0,c.width,c.height);
+  g.fillStyle='#f2f2e8';g.strokeStyle='#f2f2e8';g.lineWidth=0.15*s;g.textAlign='center';g.textBaseline='middle';
+  const txt=(t,x,y,h,b)=>{g.font=`${b?'700':'500'} ${h*s}px "IBM Plex Mono",monospace`;g.fillText(t,x*s,y*s)};
+  // Bauteilumrisse und Referenzen
+  for(const f of fps){
+    if(f.r[0]==='H')continue;
+    const xs=f.p.map(p=>p[0]),ys=f.p.map(p=>p[1]);
+    const cx=(Math.min(...xs)+Math.max(...xs))/2, cy=(Math.min(...ys)+Math.max(...ys))/2;
+    if(f.r==='U1'){g.strokeRect(0.2*s,18*s,23.3*s,18*s);txt('U1  RP2350-Zero',11.75,27,1.3,1);
+      const labs=['5V','G','3V3','29','28','27','26','15','14'];
+      labs.forEach((l,i)=>txt(l,1.59+i*2.54,32.6,0.9));
+      for(let i=0;i<=8;i++)txt(String(i),1.59+i*2.54,21.4,0.9);continue}
+    if(f.r[0]==='J'&&f.r!=='J9')continue;
+    let lx=cx,ly=Math.min(...ys)-2.6; if(f.r==='U2')ly=cy-3.6;
+    txt(f.r,lx,ly,1.15,1);
+  }
+  // Schienenbeschriftung
+  const rail=fps.filter(f=>f.r[0]==='J'&&f.r!=='J9').sort((a,b)=>a.y-b.y);
+  const px=rail[0].p.map(p=>p[0]).sort((a,b)=>a-b);
+  ['G','V','R','T'].forEach((l,i)=>txt(l,px[i],rail[0].y-2.6,1.3,1));
+  rail.forEach((f,i)=>{txt(i?String(i):'U',px[0]-2.6,f.y,1.3,1);g.lineWidth=0.12*s;g.strokeRect((px[0]-1.27)*s,(f.y-1.27)*s,(px[3]-px[0]+2.54)*s,2.54*s)});
+  txt('BEC  −  +',6.5,8,1.2,1);
+  txt('CRSF-Router 8',30,38,2.2,1);
+  txt('G=GND  V=+BEC (5-6V, kein HV)  R=zum RX  T=vom TX',30,41,1.0);
+  txt(variant==='Router'?'V2 THT · Router · 7 Ports':'V2 THT · Test · 6 Ports',30,43.2,1.0);
+  // Pads (Kupfer, verzinnt)
+  g.fillStyle='#c9b46a';
+  for(const f of fps)for(const p of f.p){if(!p[3]||f.r[0]==='H')continue;const r=p[2]/2*s;
+    if(p[4])g.fillRect(p[0]*s-r,p[1]*s-r,2*r,2*r);else{g.beginPath();g.arc(p[0]*s,p[1]*s,r,0,7);g.fill()}}
+  const t=new THREE.CanvasTexture(c);t.anisotropy=8;if('colorSpace'in t)t.colorSpace=THREE.SRGBColorSpace;else t.encoding=THREE.sRGBEncoding;return t;
+}
+
+function boardMesh(fps,variant){
+  const sh=new THREE.Shape(),r=2;
+  sh.moveTo(X(r),-Z(0));sh.lineTo(X(W-r),-Z(0));sh.quadraticCurveTo(X(W),-Z(0),X(W),-Z(r));
+  sh.lineTo(X(W),-Z(H-r));sh.quadraticCurveTo(X(W),-Z(H),X(W-r),-Z(H));sh.lineTo(X(r),-Z(H));
+  sh.quadraticCurveTo(X(0),-Z(H),X(0),-Z(H-r));sh.lineTo(X(0),-Z(r));sh.quadraticCurveTo(X(0),-Z(0),X(r),-Z(0));
+  for(const f of fps)for(const p of f.p){if(!p[3])continue;const h=new THREE.Path();h.absarc(X(p[0]),-Z(p[1]),p[3]/2,0,Math.PI*2,true);sh.holes.push(h)}
+  const geo=new THREE.ExtrudeGeometry(sh,{depth:T,bevelEnabled:false,curveSegments:16});
+  geo.rotateX(-Math.PI/2);
+  // UV für die Oberseite aus x/z
+  const pos=geo.attributes.position,uv=geo.attributes.uv;
+  for(let i=0;i<pos.count;i++){uv.setXY(i,(pos.getX(i)+W/2)/W,1-(pos.getZ(i)+H/2)/H)}
+  const tex=boardTexture(fps,variant);
+  const top=new THREE.MeshStandardMaterial({map:tex,roughness:.55});
+  // Gruppen: 0 = Deckflächen, 1 = Seiten
+  const m=new THREE.Mesh(geo,[top,mat.edge]);return m;
+}
+
+const cyl=(r,l,m,seg=24)=>new THREE.Mesh(new THREE.CylinderGeometry(r,r,l,seg),m);
+const box=(w,h,d,m)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+function at(o,x,y,z){o.position.set(x,y,z);return o}
+// Teil zwischen zwei Pads ausrichten (lokale x-Achse = Pad1->Pad2)
+function axisGroup(p1,p2){const g=new THREE.Group();const dx=p2[0]-p1[0],dy=p2[1]-p1[1];
+  g.position.set(X((p1[0]+p2[0])/2),T,Z((p1[1]+p2[1])/2));g.rotation.y=-Math.atan2(dy,dx);g.userData.len=Math.hypot(dx,dy);return g}
+function lead(g,x,h,y0=0,m=mat.tin){g.add(at(cyl(0.3,h+1.6,m,8),x,y0+(h-1.6)/2,0))}
+function legBent(g,len,bodyLen,y){ // axiale Bauteile: Beine waagrecht + runter
+  const half=len/2; for(const s of[-1,1]){g.add(at(cyl(0.3,y+1.6,mat.tin,8),s*half,(y-1.6)/2,0));
+    const hl=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,half-bodyLen/2,8),mat.tin);hl.rotation.z=Math.PI/2;g.add(at(hl,s*(half+bodyLen/2)/2,y,0))}}
+
+function part(f){
+  const P=f.p, g0=new THREE.Group();
+  const fp=f.f;
+  if(fp.startsWith('MountingHole'))return null;
+  if(fp.startsWith('PinHeader')){
+    const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);
+    const g=axisGroup(P[0],P[P.length-1]),n=P.length,L=n*2.54;
+    g.add(at(box(L,2.5,2.5,mat.black),0,1.25,0));
+    for(let i=0;i<n;i++){const x=-L/2+1.27+i*2.54;g.add(at(box(.64,11.5,.64,mat.gold),x,(11.5/2)-3,0))}
+    return g;
+  }
+  if(fp.startsWith('C_Disc')){const g=axisGroup(P[0],P[1]);const y=4.5;
+    const d=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,2.5,32),f.v==='100n'?mat.orange:mat.blueCap);d.rotation.x=Math.PI/2;g.add(at(d,0,y,0));
+    for(const s of[-1,1])lead(g,s*g.userData.len/2,y-1.5);return g}
+  if(fp.startsWith('CP_Radial')){const g=axisGroup(P[0],P[1]);
+    g.add(at(cyl(4,11.5,mat.elko,40),0,0.5+11.5/2,0));
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(4.02,4.02,11.4,40,1,true,-0.5,1.0),mat.stripe);st.rotation.y=Math.PI/2; // Minusstreifen Richtung Pad 2
+    g.add(at(st,0,0.5+11.5/2,0));g.add(at(cyl(3.6,0.2,mat.tin,40),0,12.05,0));
+    for(const s of[-1,1])lead(g,s*g.userData.len/2,0.5);return g}
+  if(fp.startsWith('R_Axial')){const g=axisGroup(P[0],P[1]);const y=1.6;
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(1.25,1.25,6.3,24),mat.beige);b.rotation.z=Math.PI/2;g.add(at(b,0,y,0));
+    const cols=f.v==='33k'?[0xff8c00,0xff8c00,0xff8c00,0xc9a227]:[0x8b4513,0x111111,0xff8c00,0xc9a227];
+    cols.forEach((c,i)=>{const r=new THREE.Mesh(new THREE.CylinderGeometry(1.28,1.28,.5,24),M(c));r.rotation.z=Math.PI/2;g.add(at(r,-2.2+i*1.2+(i==3?.6:0),y,0))});
+    legBent(g,g.userData.len,6.3,y);return g}
+  if(fp.startsWith('D_DO')){const g=axisGroup(P[0],P[1]);const big=fp.includes('DO-15');const R=big?1.8:1.35,L=big?7.6:5.2,y=R+.2;
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(R,R,L,24),mat.diode);b.rotation.z=Math.PI/2;g.add(at(b,0,y,0));
+    const r=new THREE.Mesh(new THREE.CylinderGeometry(R+.02,R+.02,.8,24),mat.band);r.rotation.z=Math.PI/2;g.add(at(r,-L/2+.9,y,0)); // Kathode = Pad 1
+    legBent(g,g.userData.len,L,y);return g}
+  if(fp.startsWith('TO-92')){const g=axisGroup(P[0],P[2]);const y=3;
+    const sh=new THREE.Shape();sh.absarc(0,0,2.4,0,Math.PI,false);sh.lineTo(2.4,0);
+    const geo=new THREE.ExtrudeGeometry(sh,{depth:4.5,bevelEnabled:false,curveSegments:24});geo.rotateX(-Math.PI/2);
+    const b=new THREE.Mesh(geo,mat.black);b.rotation.y=Math.PI;g.add(at(b,0,y,0));
+    for(const p of[-1,0,1])lead(g,p*g.userData.len/2,y);return g}
+  if(fp.startsWith('Fuse')){const g=axisGroup(P[0],P[1]);const y=4;
+    const b=box(Math.max(g.userData.len+2,7.4),8,3,mat.yellow);g.add(at(b,0,y+4,0));
+    for(const s of[-1,1])lead(g,s*g.userData.len/2,y);return g}
+  if(fp.startsWith('RP2350')){ // Buchsenleisten + gestecktes Board
+    const g=new THREE.Group();g.position.y=T;
+    const rows={top:P.filter(p=>Math.abs(p[1]-19.38)<.1),bot:P.filter(p=>Math.abs(p[1]-34.62)<.1),right:P.filter(p=>Math.abs(p[0]-21.91)<.1&&p[1]>20&&p[1]<34)};
+    const sock=(pts,horiz)=>{const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);const cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;
+      const L=pts.length*2.54;const b=horiz?box(L,8.5,2.54,mat.black):box(2.54,8.5,L,mat.black);g.add(at(b,X(cx),4.25,Z(cy)))};
+    sock(rows.top,true);sock(rows.bot,true);
+    const z=new THREE.Group();z.name='zero';
+    if(cur==='Router')sock(rows.right,false);
+    const zy=8.5+2.5; // Stiftleiste im Buchsenkontakt
+    z.add(at(box(23.5,1,18,mat.zeroPcb),X(11.75),zy+.5,Z(27)));
+    z.add(at(box(8.9,3.2,7.4,mat.usb),X(3.4),zy+1+1.6,Z(27)));
+    z.add(at(box(7,0.9,7,mat.chip),X(14),zy+1.45,Z(27)));
+    z.add(at(box(1.6,.6,1.6,M(0xf0f0f0,{emissive:0x113355})),X(19.5),zy+1.3,Z(24)));
+    z.add(at(box(3,1.4,2,M(0x333333)),X(8.5),zy+1.7,Z(21.2)));z.add(at(box(3,1.4,2,M(0x333333)),X(8.5),zy+1.7,Z(32.8)));
+    for(const p of P){if(cur!=='Router'&&p[0]>21&&p[1]>20&&p[1]<34)continue;z.add(at(box(.64,8.5,.64,mat.gold),X(p[0]),zy+1.6-4.25,Z(p[1])))}
+    const strip=(pts,horiz)=>{const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);const cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;const L=pts.length*2.54;
+      z.add(at(horiz?box(L,2.5,2.4,mat.black):box(2.4,2.5,L,mat.black),X(cx),8.5+1.25,Z(cy)))};
+    strip(rows.top,true);strip(rows.bot,true);if(cur==='Router')strip(rows.right,false);
+    g.add(z);zeroGroup=z;return g;
+  }
+  return null;
+}
+
+function build(v){
+  cur=v;if(group)scene.remove(group);group=new THREE.Group();
+  const fps=DATA[v];group.add(boardMesh(fps,v));
+  for(const f of fps){const o=part(f);if(o)group.add(o)}
+  // Lötstellen unten
+  for(const f of fps)for(const p of f.p){if(!p[3]||f.r[0]==='H')continue;const s=new THREE.Mesh(new THREE.ConeGeometry(p[2]/2,0.9,12),mat.tin);s.rotation.x=Math.PI;group.add(at(s,X(p[0]),-.45,Z(p[1])))}
+  scene.add(group);zeroGroup.visible=document.getElementById('tZero').getAttribute('aria-pressed')==='true';
+  const tb=document.querySelector('#bom tbody');tb.innerHTML='';
+  const order=r=>({U:0,C:1,D:2,F:3,R:4,J:5,H:6}[r[0]]??9);
+  fps.slice().sort((a,b)=>order(a.r)-order(b.r)||a.r.localeCompare(b.r,'de',{numeric:true})).forEach(f=>{
+    const tr=document.createElement('tr');const bau=f.f.replace(/_/g,' ').replace('RP2350-Zero Socket','Buchsenleisten 2,54').replace('PinHeader 1x04 Rail','Stiftleiste 1×4 gerade');
+    tr.innerHTML=`<td class="m">${f.r}</td><td>${f.v}</td><td>${bau}</td>`;tb.appendChild(tr)});
+}
+
+const views={iso:[-84,100,126],top:[0,190,0.01],side:[0,22,170]};
+function view(k){cam.position.set(...views[k]);ctl.target.set(0,k==='top'?0:4,0);ctl.update()}
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(stage);resize();
+const pressed=(a,b)=>{a.setAttribute('aria-pressed','true');b.setAttribute('aria-pressed','false')};
+vR.onclick=()=>{pressed(vR,vT);build('Router')};vT.onclick=()=>{pressed(vT,vR);build('Test')};
+cIso.onclick=()=>view('iso');cTop.onclick=()=>view('top');cSide.onclick=()=>view('side');
+tZero.onclick=()=>{const on=tZero.getAttribute('aria-pressed')!=='true';tZero.setAttribute('aria-pressed',String(on));zeroGroup.visible=on};
+document.fonts.ready.then(()=>build(cur));build('Router');view('iso');
+(function loop(){requestAnimationFrame(loop);ctl.update();renderer.render(scene,cam)})();
+</script>
