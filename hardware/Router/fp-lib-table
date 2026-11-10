@@ -1,4 +1,0 @@
-(fp_lib_table
-  (version 7)
-  (lib (name "Router8")(type "KiCad")(uri "${KIPRJMOD}/footprints.pretty")(options "")(descr "Projekt-Footprints CRSF-Router 8"))
-)

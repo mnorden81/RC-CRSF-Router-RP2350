@@ -6,8 +6,8 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 
 | Version | Ports | Pins am RP2350-Zero | Im Sender | Platine |
 |---|---|---|---|---|
-| **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
-| **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | [hardware/Test](hardware/Test/) |
+| **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router-V2](hardware/Router-V2/) |
+| **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | [hardware/Test-V2](hardware/Test-V2/) |
 
 > Stand: Firmware **v0.4.0** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste), kompiliert und mit Host-Tests geprüft, **noch nicht auf Hardware getestet**. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis.
 
@@ -96,7 +96,7 @@ Jeder Router hat eine eigene WM-Adresse (0–15 → CRSF 0xC0 + Adresse). Mehrer
 | Port 5 | GP10 | GP11 | GP15 | GP27 | PIO-UART |
 | Port 6 | GP12 | GP13 | GP28 | GP29 | PIO-UART |
 | Port 7 | GP14 | GP15 | – | – | PIO-UART |
-| Spannung | GP26 | | GP26 | | Teiler 33k/10k, optional |
+| Spannung | GP26 | | GP26 | | nur mit externem Teiler 33k/10k, auf der Platine nicht vorhanden |
 
 Lage am Board (Oberseite, USB oben): rechte Leiste GP0–GP8, untere Kante GP9–GP13 (nur Lötpads), linke Leiste 5V, GND, 3V3, GP29, GP28, GP27, GP26, GP15, GP14. Die **Router**-Version braucht die Pads unten (5er-Stiftleiste einlöten), die **Test**-Version kommt mit den beiden seitlichen Leisten aus. Mehr als 8 UARTs (2 Hardware + 6 PIO) schafft der RP2350 nicht, deshalb sind 7 Ports das Maximum.
 
@@ -122,8 +122,7 @@ Keine weiteren Bibliotheken nötig. Der serielle Monitor (115200) zeigt alle 10 
 |---|---|
 | `firmware/RC_CRSF_Router_RP2350/` | Arduino-Sketch (siehe [firmware/README.md](firmware/README.md)) |
 | `tests/` | Host-Tests des Routers (`sh tests/run_tests.sh`) |
-| `hardware/Router/`, `hardware/Test/` | KiCad-Projekte der beiden Versionen, Variante 1 (SMD) (siehe [hardware/README.md](hardware/README.md)) |
-| `hardware/Router-V2/`, `hardware/Test-V2/` | Variante 2 nur mit THT-Bauteilen, vereinfacht; 3D-Modell `hardware/3d-modell-v2.html` |
+| `hardware/Router-V2/`, `hardware/Test-V2/` | KiCad-Projekte der beiden Versionen, nur THT-Bauteile, plus 3D-Modell `hardware/3d-modell-v2.html` (siehe [hardware/README.md](hardware/README.md)) |
 | `docs/` | Projektbeschreibung (DOCX), Fotos unter `docs/bilder/` |
 
 ## Herkunft
