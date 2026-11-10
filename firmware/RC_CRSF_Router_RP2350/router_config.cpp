@@ -11,7 +11,7 @@ bool          cfgDirty   = false;
 unsigned long cfgDirtyMs = 0;
 
 static constexpr uint32_t CFG_MAGIC   = 0x38525352;   // "RSR8"
-static constexpr uint8_t  CFG_VERSION = 4;   // v0.4.0: Filter, Telemetrie-Bremse, Halbduplex je Port
+static constexpr uint8_t  CFG_VERSION = 4;   // v0.4.0: Filter und Telemetrie-Bremse je Port
 // v0.3.0 (Version 3): wird beim ersten Start uebernommen, nichts geht verloren
 static constexpr size_t   CFG_EEPROM  = 256;
 
@@ -44,7 +44,6 @@ void cfgDefaults() {
     cfg.tempSend = 0;
     cfg.ledRgb   = 0;
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
-        cfg.portLine[i] = LINE_FULL;
         cfg.portRc[i]   = 1;
         cfg.portLs[i]   = 1;
         cfg.portTele[i] = 0;   // alle
@@ -60,7 +59,6 @@ void cfgSanitize() {
     cfg.tempSend = cfg.tempSend ? 1 : 0;
     cfg.ledRgb   = cfg.ledRgb ? 1 : 0;
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
-        cfg.portLine[i] = (cfg.portLine[i] == LINE_HALF && i != PORT_HW_UART) ? LINE_HALF : LINE_FULL;
         cfg.portRc[i]   = cfg.portRc[i] ? 1 : 0;
         cfg.portLs[i]   = cfg.portLs[i] ? 1 : 0;
         if (cfg.portTele[i] >= TELE_RATE_COUNT) cfg.portTele[i] = 0;

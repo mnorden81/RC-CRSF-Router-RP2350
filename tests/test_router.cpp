@@ -246,31 +246,22 @@ static void testDeviceList() {
     CHECK(r.deviceCount(0) == 0 && r.deviceCount(2) == 0);
 }
 
-// v0.4.0: Halbduplex: nicht senden, solange ein Frame hereinkommt;
-// halbe Frames verfallen nach MR_PARSER_TIMEOUT_MS
-static void testHalfDuplex() {
+// v0.4.0: halbe Frames verfallen nach MR_PARSER_TIMEOUT_MS
+static void testParserTimeout() {
     MultiRouter r; FakeStream up, p1;
-    r.begin(&up); r.setPort(0, &p1); r.setPortHalfDuplex(0, true);
+    r.begin(&up); r.setPort(0, &p1);
     auto tele = frame(0x08, {0, 50, 0, 0, 0, 0, 0, 0});
-    p1.feed(std::vector<uint8_t>(tele.begin(), tele.begin() + 4));   // halber Frame
-    up.feed(rcFrame()); r.poll(10);
-    CHECK(p1.tx.empty());                                            // wartet
-    p1.feed(std::vector<uint8_t>(tele.begin() + 4, tele.end())); r.poll(11);
-    CHECK(up.tx == tele && p1.tx == rcFrame());                      // Frame fertig, jetzt senden
-    // Stoerung: halber Frame, dann Ruhe -> nach Timeout wieder senden
-    p1.tx.clear();
-    p1.feed({0xC8, 0x0A, 0x08}); up.feed(rcFrame()); r.poll(20);
-    CHECK(p1.tx.empty());
-    r.poll(20 + MR_PARSER_TIMEOUT_MS + 1);
-    CHECK(p1.tx == rcFrame());
+    p1.feed({0xC8, 0x0A, 0x08}); r.poll(20);        // Stoerung: halber Frame
+    r.poll(20 + MR_PARSER_TIMEOUT_MS + 1);         // Ruhe -> verworfen
+    p1.feed(tele); r.poll(30);
+    CHECK(up.tx == tele);                          // naechster Frame kommt sauber an
 }
 
 static void testConfigV4() {
     cfgDefaults();
-    CHECK(cfg.portRc[0] == 1 && cfg.portLs[6] == 1 && cfg.portTele[3] == 0 && cfg.portLine[2] == LINE_FULL);
-    cfg.portLine[PORT_HW_UART] = LINE_HALF; cfg.portLine[3] = LINE_HALF; cfg.portTele[0] = 99; cfg.portRc[1] = 7;
+    CHECK(cfg.portRc[0] == 1 && cfg.portLs[6] == 1 && cfg.portTele[3] == 0);
+    cfg.portTele[0] = 99; cfg.portRc[1] = 7;
     cfgSanitize();
-    CHECK(cfg.portLine[PORT_HW_UART] == LINE_FULL && cfg.portLine[3] == LINE_HALF);   // Port 2 nur Vollduplex
     CHECK(cfg.portTele[0] == 0 && cfg.portRc[1] == 1);
     CHECK(TELE_RATE_MS[TELE_RATE_COUNT - 1] == MR_TELE_OFF && LuaMenu::optionCount(TELE_RATE_OPTIONS) == TELE_RATE_COUNT);
     // Einstellungen von v0.3.0 uebernehmen
@@ -278,13 +269,13 @@ static void testConfigV4() {
     cfgFromV3(old, sizeof(old));
     CHECK(cfg.moduleAddr == 13 && cfg.portBaud[0] == 1 && cfg.portBaud[3] == 0 && cfg.portBaud[6] == 2);
     CHECK(cfg.voltMode == 2 && cfg.voltCorr == -3 && cfg.tempSend == 1 && cfg.ledRgb == 1);
-    CHECK(cfg.portRc[4] == 1 && cfg.portLine[4] == LINE_FULL);
+    CHECK(cfg.portRc[4] == 1);
 }
 
 int main() {
     testDownBroadcast(); testOwnAddressStaysLocal(); testUpAndNoCrossTalk(); testCrcAndGarbage();
     testDuplicateAddress(); testNonBlockingPump(); testQueueOverflow(); testLocalCrsf(); testConfig();
-    testDownFilter(); testTelemetryBrake(); testDeviceList(); testHalfDuplex(); testConfigV4();
+    testDownFilter(); testTelemetryBrake(); testDeviceList(); testParserTimeout(); testConfigV4();
     printf("%d Pruefungen, %d Fehler\n", checks, fails);
     return fails ? 1 : 0;
 }

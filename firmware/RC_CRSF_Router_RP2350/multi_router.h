@@ -11,8 +11,6 @@
 //   - Telemetrie nach oben (Frames < 0x28): alle, hoechstens x/s je
 //     Sensor-Art (Bremse) oder aus. Extended-Frames (DEVICE_INFO, Lua,
 //     Befehle) gehen immer hoch.
-//   - Halbduplex: der Port sendet nur, wenn die Leitung frei ist
-//     (nie mitten in einen empfangenen Frame hinein)
 //   - Geraeteliste: DEVICE_INFO-Frames von unten werden je Port gemerkt.
 //     pingPorts() fragt alle Ports aktiv ab; Antworten an die eigene
 //     Adresse bleiben im Router und gehen nicht zum Empfaenger.
@@ -87,7 +85,6 @@ struct MrPortCfg {
     bool     rc        = true;   // RC-Kanaele nach unten
     bool     linkStats = true;   // LinkStats nach unten
     uint16_t teleMs    = 0;      // Telemetrie nach oben, siehe MR_TELE_OFF
-    bool     halfDuplex = false;
 };
 
 struct MrTeleSlot {
@@ -131,7 +128,6 @@ public:
     // Einstellungen je Port (wirken sofort)
     void setPortFilter(uint8_t i, bool rc, bool linkStats);
     void setTelemetry(uint8_t i, uint16_t ms);        // 0 = alle, MR_TELE_OFF = aus
-    void setPortHalfDuplex(uint8_t i, bool hd);
     const MrPortCfg& portCfg(uint8_t i) const { return pcfg[i]; }
 
     // Geraeteliste

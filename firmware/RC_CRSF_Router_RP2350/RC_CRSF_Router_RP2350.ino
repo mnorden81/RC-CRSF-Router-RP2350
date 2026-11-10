@@ -16,7 +16,6 @@
    Ab v0.4.0 je Port im Lua-Menue:
      - Filter: RC-Kanaele und LinkStats nach unten an/aus
      - Telemetrie nach oben: alle, hoechstens 50 ... 1 Frame/s je Sensor-Art, aus
-     - Leitung: Vollduplex (TX+RX) oder Halbduplex (nur TX-Pin, nicht Port 2)
      - Geraeteliste: wer an welchem Port haengt (Ping beim Start und auf Abruf)
 
    ── Ports (pins.h) ────────────────────────────────────────────────────
@@ -58,7 +57,6 @@
 #include "multi_router.h"
 #include "router_config.h"
 #include "ws2812.h"
-#include "serial_pio_hd.h"
 
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
@@ -78,8 +76,8 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 // v0.3.0: zwei Varianten in pins.h: "Router" (7 Ports, alle Pins wie v0.1)
 //         und "Test" (6 Ports, nur seitliche Stiftleisten wie v0.2).
 // v0.4.0: "Version 2" der Funktionen: Filter je Port (RC-Kanaele,
-//         LinkStats), Telemetrie-Bremse je Port, Geraeteliste per Ping,
-//         Halbduplex je PIO-Port. Lua-Menue neu geordnet (neue IDs).
+//         LinkStats), Telemetrie-Bremse je Port, Geraeteliste per Ping.
+//         Lua-Menue neu geordnet (neue IDs).
 //         Einstellungen aus v0.3.0 werden uebernommen.
 
 static constexpr uint32_t UPLINK_BAUD = 420000;
@@ -101,12 +99,6 @@ static SerialPIO* const PIO_PORTS[PORT_COUNT] = {&uartPio1, nullptr, &uartPio3, 
 #endif
 };
 static_assert(PORT_COUNT <= MR_MAX_DOWN, "MR_MAX_DOWN zu klein");
-// TX-Pin je Port (fuer Halbduplex: ein Draht am TX-Pin)
-static const uint8_t PORT_TX_PIN[PORT_COUNT] = {PIN_P1_TX, PIN_P2_TX, PIN_P3_TX, PIN_P4_TX, PIN_P5_TX, PIN_P6_TX
-#if PORT_COUNT >= 7
-    , PIN_P7_TX
-#endif
-};
 
 // Zustand je Port: 0 aus, 1 laeuft, 2 Start fehlgeschlagen
 static constexpr uint8_t PORT_OFF = 0, PORT_RUN = 1, PORT_FAIL = 2;
@@ -152,14 +144,11 @@ static void startPorts() {
             router.setPort(1, &Serial2);
             portState[1] = PORT_RUN;
         } else {
-            // Halbduplex: eigener UART mit TX und RX auf dem TX-Pin
             SerialPIO* p = PIO_PORTS[i];
-            if (cfg.portLine[i] == LINE_HALF) p = new SerialPIOHD(PORT_TX_PIN[i], RX_FIFO);
             p->begin(baud);
             if (*p) { router.setPort(i, p); portState[i] = PORT_RUN; }
             else    { portState[i] = PORT_FAIL; Serial.printf("Port %u: kein PIO frei\n", i + 1); }
         }
-        router.setPortHalfDuplex(i, cfg.portLine[i] == LINE_HALF);
     }
 }
 
@@ -203,16 +192,15 @@ static void portDevicesText(uint8_t i, char* buf, size_t max) {
 // ======== Lua-Menue ===================================================
 // IDs werden beim Aufbau fortlaufend vergeben (Reihenfolge = Anzeige):
 //  1 Version
-//  2 Ordner "Ports (nach Neustart)": Port n Baudrate, dann Port n Leitung
-//    (nur PIO-Ports, Port 2 ist immer Vollduplex)
+//  2 Ordner "Ports (nach Neustart)": Port n Baudrate
 //    Ordner "Filter": je Port ein Ordner mit RC-Kanaele, LinkStats, Telemetrie hoch
 //    Ordner "Geraete": Suchen, dann je Port die erkannten Geraete
 //    Modul Adresse
 //    Ordner "Telemetrie": Spannung senden, Korrektur, Spannung, Temperatur senden, Chiptemperatur
 //    Ordner "Status": Frames runter/hoch, Verworfen, Gefiltert, CRC-Fehler unten, Adresskonflikt, Ports aktiv
 //    LED Farbfolge, Neustart, Geraetename
-// Router (7 Ports): 71 Felder, Test (6 Ports): 64 Felder
-static constexpr uint8_t LUA_COUNT = 22 + 7 * PORT_COUNT;
+// Router (7 Ports): 65 Felder, Test (6 Ports): 59 Felder
+static constexpr uint8_t LUA_COUNT = 23 + 6 * PORT_COUNT;
 static LuaItem luaItems[LUA_COUNT + 1];
 static LuaMenu luaMenu(luaItems, sizeof(luaItems) / sizeof(luaItems[0]));
 
@@ -221,8 +209,6 @@ static void luaShowName(uint8_t, LuaView& v, char*)        { v.text = DEVICE_NAM
 
 static uint8_t luaGetPort(uint8_t a)            { return cfg.portBaud[a]; }
 static void    luaSetPort(uint8_t a, uint8_t v) { cfg.portBaud[a] = v; cfgMarkDirty(); }
-static uint8_t luaGetLine(uint8_t a)            { return cfg.portLine[a]; }
-static void    luaSetLine(uint8_t a, uint8_t v) { cfg.portLine[a] = v; cfgMarkDirty(); }
 static uint8_t luaGetRc(uint8_t a)              { return cfg.portRc[a]; }
 static void    luaSetRc(uint8_t a, uint8_t v)   { cfg.portRc[a] = v; applyPortFilters(); cfgMarkDirty(); }
 static uint8_t luaGetLs(uint8_t a)              { return cfg.portLs[a]; }
@@ -272,8 +258,6 @@ static void    luaSetRestart(uint8_t, uint8_t v) { if (v) requestRestart(); }
 static void buildLuaMenu() {
     static const char* AUS_EIN = "Aus;Ein";
     static const char* PORT_NAME[7] = {"Port 1", "Port 2", "Port 3", "Port 4", "Port 5", "Port 6", "Port 7"};
-    static const char* LINE_NAME[7] = {"Port 1 Leitung", "Port 2 Leitung", "Port 3 Leitung", "Port 4 Leitung",
-                                       "Port 5 Leitung", "Port 6 Leitung", "Port 7 Leitung"};
     LuaMenu& m = luaMenu;
     uint8_t id = 1;
     m.clear();
@@ -284,8 +268,6 @@ static void buildLuaMenu() {
     m.folder(fPorts, 0, "Ports (nach Neustart)");
     for (uint8_t i = 0; i < PORT_COUNT; i++)
         m.select(id++, fPorts, PORT_NAME[i], PORT_BAUD_OPTIONS, luaGetPort, luaSetPort, i);
-    for (uint8_t i = 0; i < PORT_COUNT; i++)
-        if (i != PORT_HW_UART) m.select(id++, fPorts, LINE_NAME[i], "Voll (TX+RX);Halb (nur TX)", luaGetLine, luaSetLine, i);
 
     const uint8_t fFilter = id++;
     m.folder(fFilter, 0, "Filter");

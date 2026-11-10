@@ -105,10 +105,6 @@ void MultiRouter::setTelemetry(uint8_t i, uint16_t ms) {
     memset(tele[i], 0, sizeof(tele[i]));
 }
 
-void MultiRouter::setPortHalfDuplex(uint8_t i, bool hd) {
-    if (i < MR_MAX_DOWN) pcfg[i].halfDuplex = hd;
-}
-
 // Nach unten: RC-Kanaele und LinkStats je Port abschaltbar, alles andere
 // (Ping, Lua, Befehle, Broadcasts) geht immer durch
 bool MultiRouter::passDown(uint8_t i, uint8_t type) {
@@ -224,8 +220,8 @@ void MultiRouter::fromDown(uint8_t i, const uint8_t* f, uint8_t n) {
 }
 
 // Bytes eines Ports lesen. Bleibt ein Frame halb liegen (Stoerung, Geraet
-// abgesteckt), wird er nach MR_PARSER_TIMEOUT_MS verworfen - sonst wartet
-// ein Halbduplex-Port endlos auf das Frame-Ende.
+// abgesteckt), wird er nach MR_PARSER_TIMEOUT_MS verworfen, damit der
+// naechste Frame sauber erkannt wird.
 void MultiRouter::readPort(Stream* s, MrParser& p, unsigned long& lastByte, bool up, uint8_t i) {
     if (p.idx && s->available() <= 0 && now_ - lastByte > MR_PARSER_TIMEOUT_MS) p.idx = 0;
     bool crcErr;
@@ -248,12 +244,8 @@ void MultiRouter::poll(unsigned long now) {
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++)
         if (down[i]) readPort(down[i], downParser[i], downByteMs[i], false, i);
     if (uplink) pump(upQ, uplink, upStats);
-    for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
-        if (!down[i]) continue;
-        // Halbduplex: nicht senden, solange ein Frame hereinkommt
-        if (pcfg[i].halfDuplex && downParser[i].idx != 0 && downQ[i].txOff == 0) continue;
-        pump(downQ[i], down[i], downStats[i]);
-    }
+    for (uint8_t i = 0; i < MR_MAX_DOWN; i++)
+        if (down[i]) pump(downQ[i], down[i], downStats[i]);
 }
 
 uint32_t MultiRouter::dropped() const {

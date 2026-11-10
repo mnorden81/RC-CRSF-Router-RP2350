@@ -30,11 +30,6 @@ static constexpr uint8_t  TELE_RATE_COUNT = 8;
 static const char* const  TELE_RATE_OPTIONS = "Alle;50/s;20/s;10/s;5/s;2/s;1/s;Aus";
 static const uint16_t     TELE_RATE_MS[TELE_RATE_COUNT] = {0, 20, 50, 100, 200, 500, 1000, MR_TELE_OFF};
 
-// Leitung je Port: 0 = Vollduplex (TX + RX), 1 = Halbduplex (nur TX-Pin)
-static constexpr uint8_t  LINE_FULL = 0;
-static constexpr uint8_t  LINE_HALF = 1;
-// Port 2 ist der Hardware-UART und kann nur Vollduplex
-static constexpr uint8_t  PORT_HW_UART = 1;
 
 struct RouterConfig {
     uint8_t moduleAddr;              // WM-Adresse 0-15 -> CRSF 0xC0+Adresse
@@ -44,7 +39,6 @@ struct RouterConfig {
     uint8_t tempSend;                // Temperatur als CRSF-Telemetrie (0x0D)
     uint8_t ledRgb;                  // 0 = GRB (Standard WS2812), 1 = RGB
     // ab v0.4.0 (Konfig-Version 4)
-    uint8_t portLine[MR_MAX_DOWN];   // LINE_*, gilt nach Neustart
     uint8_t portRc[MR_MAX_DOWN];     // RC-Kanaele nach unten 0/1
     uint8_t portLs[MR_MAX_DOWN];     // LinkStats nach unten 0/1
     uint8_t portTele[MR_MAX_DOWN];   // Index in TELE_RATE_MS
