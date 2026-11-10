@@ -11,15 +11,28 @@ bool          cfgDirty   = false;
 unsigned long cfgDirtyMs = 0;
 
 static constexpr uint32_t CFG_MAGIC   = 0x38525352;   // "RSR8"
-static constexpr uint8_t  CFG_VERSION = 3;   // v0.3.0: Platz fuer 7 Ports (beide Varianten)
+static constexpr uint8_t  CFG_VERSION = 4;   // v0.4.0: Filter und Telemetrie-Bremse je Port
+// v0.3.0 (Version 3): wird beim ersten Start uebernommen, nichts geht verloren
 static constexpr size_t   CFG_EEPROM  = 256;
 
-struct CfgBlock {
-    uint32_t     magic;
-    uint8_t      version;
-    uint8_t      size;
-    RouterConfig c;
-    uint8_t      sum;
+template <typename C>
+struct CfgBlockT {
+    uint32_t magic;
+    uint8_t  version;
+    uint8_t  size;
+    C        c;
+    uint8_t  sum;
+};
+typedef CfgBlockT<RouterConfig> CfgBlock;
+
+// Aufbau der Einstellungen bis v0.3.0
+struct RouterConfigV3 {
+    uint8_t moduleAddr;
+    uint8_t portBaud[MR_MAX_DOWN];
+    uint8_t voltMode;
+    int8_t  voltCorr;
+    uint8_t tempSend;
+    uint8_t ledRgb;
 };
 
 void cfgDefaults() {
@@ -30,6 +43,11 @@ void cfgDefaults() {
     cfg.voltCorr = 0;
     cfg.tempSend = 0;
     cfg.ledRgb   = 0;
+    for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
+        cfg.portRc[i]   = 1;
+        cfg.portLs[i]   = 1;
+        cfg.portTele[i] = 0;   // alle
+    }
 }
 
 void cfgSanitize() {
@@ -40,10 +58,31 @@ void cfgSanitize() {
     if (cfg.voltCorr < -5 || cfg.voltCorr > 5) cfg.voltCorr = 0;
     cfg.tempSend = cfg.tempSend ? 1 : 0;
     cfg.ledRgb   = cfg.ledRgb ? 1 : 0;
+    for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
+        cfg.portRc[i]   = cfg.portRc[i] ? 1 : 0;
+        cfg.portLs[i]   = cfg.portLs[i] ? 1 : 0;
+        if (cfg.portTele[i] >= TELE_RATE_COUNT) cfg.portTele[i] = 0;
+    }
+}
+
+// Einstellungen aus v0.3.0 uebernehmen, neue Felder auf Vorgabe
+void cfgFromV3(const uint8_t* raw, size_t n) {
+    cfgDefaults();
+    if (n < sizeof(RouterConfigV3)) return;
+    RouterConfigV3 o;
+    memcpy(&o, raw, sizeof(o));
+    cfg.moduleAddr = o.moduleAddr;
+    memcpy(cfg.portBaud, o.portBaud, sizeof(cfg.portBaud));
+    cfg.voltMode = o.voltMode;
+    cfg.voltCorr = o.voltCorr;
+    cfg.tempSend = o.tempSend;
+    cfg.ledRgb   = o.ledRgb;
+    cfgSanitize();
 }
 
 #ifdef ARDUINO
-static uint8_t checksum(const RouterConfig& c) {
+template <typename C>
+static uint8_t checksum(const C& c) {
     const uint8_t* p = (const uint8_t*)&c;
     uint8_t s = 0x5A;
     for (size_t i = 0; i < sizeof(c); i++) s = (uint8_t)((s << 1 | s >> 7) ^ p[i]);
@@ -58,6 +97,14 @@ void cfgLoad() {
         b.sum == checksum(b.c)) {
         cfg = b.c;
         cfgSanitize();
+        return;
+    }
+    CfgBlockT<RouterConfigV3> o;
+    EEPROM.get(0, o);
+    if (o.magic == CFG_MAGIC && o.version == 3 && o.size == sizeof(RouterConfigV3) &&
+        o.sum == checksum(o.c)) {
+        cfgFromV3((const uint8_t*)&o.c, sizeof(o.c));
+        cfgSave();
     } else {
         cfgDefaults();
         cfgSave();
