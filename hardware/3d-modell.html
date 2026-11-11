@@ -41,33 +41,32 @@ li+li{margin-top:6px}
 <div class="wrap">
   <header>
     <div>
-      <h1>CRSF-Router 8, Platine Variante 2 (THT)</h1>
-      <p class="sub">Erstes 3D-Modell aus der KiCad-Platzierung, 70 × 45 mm, alles bedrahtet. Maße und Positionen stammen aus der Platine, die Bauteilkörper sind vereinfacht. Noch ohne Leiterbahnen.</p>
+      <h1>CRSF-Router 8, Platine (THT)</h1>
+      <p class="sub">Erstes 3D-Modell aus der KiCad-Platzierung, 38,4 × 25,5 mm, alles bedrahtet. Maße und Positionen stammen aus der Platine, die Bauteilkörper sind vereinfacht. Noch ohne Leiterbahnen.</p>
     </div>
   </header>
   <div class="stage" id="stage"><span class="hint">Ziehen = drehen · Rad/Pinch = zoomen · Rechts/zwei Finger = schieben</span></div>
   <div class="bar">
-    <span class="lbl">Version</span>
-    <span class="seg" role="group" aria-label="Version"><button id="vR" aria-pressed="true">Router · 7 Ports</button><button id="vT" aria-pressed="false">Test · 6 Ports</button></span>
-    <span class="lbl" style="margin-left:8px">Ansicht</span>
+    <span class="lbl">Ansicht</span>
     <span class="seg" role="group" aria-label="Ansicht"><button id="cIso">Schräg</button><button id="cTop">Oben</button><button id="cSide">Seite</button></span>
-    <span class="seg"><button id="tZero" aria-pressed="true">RP2350-Zero gesteckt</button></span>
+    <span class="seg"><button id="tZero" aria-pressed="true">RP2350-Zero zeigen</button></span>
   </div>
   <div class="cols">
-    <div class="card"><h2>Stückliste dieser Version</h2><div class="tbl"><table id="bom"><thead><tr><th>Ref</th><th>Wert</th><th>Bauform</th></tr></thead><tbody></tbody></table></div></div>
-    <div class="card"><h2>Was V2 anders macht</h2><ul>
-      <li>Nur THT-Bauteile, von Hand lötbar: Elko, Kondensator, Widerstände und Dioden bedrahtet.</li>
-      <li>Ohne Spannungsregler: der RP2350-Zero bekommt das BEC über die Diode D1 an seinen 5-V-Pin. Deshalb nur BEC mit 5 bis 6 V, kein HV-BEC.</li>
-      <li>Eine Sicherung (PTC 3 A) für alle Ports statt je Port eine, keine Lötbrücken und keine Serienwiderstände mehr. Das sind 9 Bauteile statt über 30.</li>
-      <li>BEC-Eingang J9 mit Suppressordiode P6KE15CA gegen Spannungsspitzen, Platine 70 × 45 mm mit 4 × M3.</li>
-      <li>RP2350-Zero steckt in Buchsenleisten (Router: auch unten 5er-Buchse für GP9–GP13).</li>
+    <div class="card"><h2>Stückliste</h2><div class="tbl"><table id="bom"><thead><tr><th>Ref</th><th>Wert</th><th>Bauform</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><h2>Aufbau</h2><ul>
+      <li>Nur THT-Bauteile, von Hand lötbar: Elko 100 µF (Ø 5 mm), liegende Diode und Sicherung bedrahtet.</li>
+      <li>Strom nur vom Empfänger über die Reihe U (Pin V), kein eigener BEC-Eingang, keine Spannungsmessung.</li>
+      <li>Ohne Spannungsregler: der RP2350-Zero bekommt das BEC über die Diode D1 an seinen 5-V-Pin. Deshalb am Empfänger nur 5 bis 6 V, kein HV-BEC.</li>
+      <li>Eine Sicherung (PTC 3 A) für alle Ports statt je Port eine, keine Lötbrücken und keine Serienwiderstände mehr. Übrig sind U1, C1, D1 und F1 statt über 30 Bauteile.</li>
+      <li>So kompakt wie möglich: 38,4 × 25,5 mm, keine Befestigungslöcher, Beschriftung auf der Unterseite.</li>
+      <li>RP2350-Zero direkt auf die Platine gelötet, ohne Buchsenleisten (Router: auch die 5 Pads unten, GP9–GP13).</li>
     </ul></div>
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
-const DATA={"Router":[{"r":"J2","v":"Port 1","f":"PinHeader_1x04_Rail","x":57.6,"y":16.54,"p":[[57.6,16.54,1.7,1.0,1,"1"],[60.14,16.54,1.7,1.0,0,"2"],[62.68,16.54,1.7,1.0,0,"3"],[65.22,16.54,1.7,1.0,0,"4"]]},{"r":"J9","v":"BEC IN","f":"PinHeader_1x02_P2.54mm_Vertical","x":4.0,"y":5.0,"p":[[4.0,5.0,1.7,1.0,1,"1"],[6.54,5.0,1.7,1.0,0,"2"]]},{"r":"D1","v":"1N5819","f":"D_DO-41_SOD81_P10.16mm_Horizontal","x":40.0,"y":4.0,"p":[[40.0,4.0,2.2,1.1,1,"1"],[50.16,4.0,2.2,1.1,0,"2"]]},{"r":"J7","v":"Port 6","f":"PinHeader_1x04_Rail","x":57.6,"y":29.24,"p":[[57.6,29.24,1.7,1.0,1,"1"],[60.14,29.24,1.7,1.0,0,"2"],[62.68,29.24,1.7,1.0,0,"3"],[65.22,29.24,1.7,1.0,0,"4"]]},{"r":"F1","v":"PTC 3A/16V MF-RG300","f":"Fuse_Bourns_MF-RG300","x":31.0,"y":16.0,"p":[[31.0,16.0,2.01,1.01,0,"1"],[36.1,17.2,2.01,1.01,0,"2"]]},{"r":"H3","v":"M3","f":"MountingHole_3.2mm_M3","x":66.5,"y":41.5,"p":[[66.5,41.5,3.2,3.2,0,""]]},{"r":"C4","v":"100n","f":"C_Disc_D5.0mm_W2.5mm_P5.00mm","x":31.0,"y":32.0,"p":[[31.0,32.0,1.6,0.8,0,"1"],[36.0,32.0,1.6,0.8,0,"2"]]},{"r":"J8","v":"Port 7","f":"PinHeader_1x04_Rail","x":57.6,"y":31.78,"p":[[57.6,31.78,1.7,1.0,1,"1"],[60.14,31.78,1.7,1.0,0,"2"],[62.68,31.78,1.7,1.0,0,"3"],[65.22,31.78,1.7,1.0,0,"4"]]},{"r":"H1","v":"M3","f":"MountingHole_3.2mm_M3","x":3.5,"y":41.5,"p":[[3.5,41.5,3.2,3.2,0,""]]},{"r":"J5","v":"Port 4","f":"PinHeader_1x04_Rail","x":57.6,"y":24.16,"p":[[57.6,24.16,1.7,1.0,1,"1"],[60.14,24.16,1.7,1.0,0,"2"],[62.68,24.16,1.7,1.0,0,"3"],[65.22,24.16,1.7,1.0,0,"4"]]},{"r":"H2","v":"M3","f":"MountingHole_3.2mm_M3","x":66.5,"y":3.5,"p":[[66.5,3.5,3.2,3.2,0,""]]},{"r":"D2","v":"P6KE15CA","f":"D_DO-15_P10.16mm_Horizontal","x":24.0,"y":4.0,"p":[[24.0,4.0,2.4,1.2,1,"1"],[34.16,4.0,2.4,1.2,0,"2"]]},{"r":"U1","v":"RP2350-Zero","f":"RP2350-Zero_Socket","x":11.75,"y":27.0,"p":[[1.59,34.62,1.7,1.0,1,"1"],[4.13,34.62,1.7,1.0,0,"2"],[6.67,34.62,1.7,1.0,0,"3"],[9.21,34.62,1.7,1.0,0,"4"],[11.75,34.62,1.7,1.0,0,"5"],[14.29,34.62,1.7,1.0,0,"6"],[16.83,34.62,1.7,1.0,0,"7"],[19.37,34.62,1.7,1.0,0,"8"],[21.91,34.62,1.7,1.0,0,"9"],[21.91,32.08,1.7,1.0,0,"10"],[21.91,29.54,1.7,1.0,0,"11"],[21.91,27.0,1.7,1.0,0,"12"],[21.91,24.46,1.7,1.0,0,"13"],[21.91,21.92,1.7,1.0,0,"14"],[21.91,19.38,1.7,1.0,0,"15"],[19.37,19.38,1.7,1.0,0,"16"],[16.83,19.38,1.7,1.0,0,"17"],[14.29,19.38,1.7,1.0,0,"18"],[11.75,19.38,1.7,1.0,0,"19"],[9.21,19.38,1.7,1.0,0,"20"],[6.67,19.38,1.7,1.0,0,"21"],[4.13,19.38,1.7,1.0,0,"22"],[1.59,19.38,1.7,1.0,0,"23"]]},{"r":"J4","v":"Port 3","f":"PinHeader_1x04_Rail","x":57.6,"y":21.62,"p":[[57.6,21.62,1.7,1.0,1,"1"],[60.14,21.62,1.7,1.0,0,"2"],[62.68,21.62,1.7,1.0,0,"3"],[65.22,21.62,1.7,1.0,0,"4"]]},{"r":"H4","v":"M3","f":"MountingHole_3.2mm_M3","x":46.0,"y":41.5,"p":[[46.0,41.5,3.2,3.2,0,""]]},{"r":"C1","v":"220u/16V","f":"CP_Radial_D8.0mm_P3.50mm","x":15.5,"y":6.5,"p":[[15.5,6.5,1.6,0.8,1,"1"],[19.0,6.5,1.6,0.8,0,"2"]]},{"r":"R2","v":"10k","f":"R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal","x":31.0,"y":27.5,"p":[[31.0,27.5,1.6,0.8,0,"1"],[41.16,27.5,1.6,0.8,0,"2"]]},{"r":"J3","v":"Port 2","f":"PinHeader_1x04_Rail","x":57.6,"y":19.08,"p":[[57.6,19.08,1.7,1.0,1,"1"],[60.14,19.08,1.7,1.0,0,"2"],[62.68,19.08,1.7,1.0,0,"3"],[65.22,19.08,1.7,1.0,0,"4"]]},{"r":"R1","v":"33k","f":"R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal","x":31.0,"y":23.0,"p":[[31.0,23.0,1.6,0.8,0,"1"],[41.16,23.0,1.6,0.8,0,"2"]]},{"r":"J1","v":"Uplink Empfaenger","f":"PinHeader_1x04_Rail","x":57.6,"y":14.0,"p":[[57.6,14.0,1.7,1.0,1,"1"],[60.14,14.0,1.7,1.0,0,"2"],[62.68,14.0,1.7,1.0,0,"3"],[65.22,14.0,1.7,1.0,0,"4"]]},{"r":"J6","v":"Port 5","f":"PinHeader_1x04_Rail","x":57.6,"y":26.7,"p":[[57.6,26.7,1.7,1.0,1,"1"],[60.14,26.7,1.7,1.0,0,"2"],[62.68,26.7,1.7,1.0,0,"3"],[65.22,26.7,1.7,1.0,0,"4"]]}],"Test":[{"r":"J3","v":"Port 2","f":"PinHeader_1x04_Rail","x":57.6,"y":20.35,"p":[[57.6,20.35,1.7,1.0,1,"1"],[60.14,20.35,1.7,1.0,0,"2"],[62.68,20.35,1.7,1.0,0,"3"],[65.22,20.35,1.7,1.0,0,"4"]]},{"r":"F1","v":"PTC 3A/16V MF-RG300","f":"Fuse_Bourns_MF-RG300","x":31.0,"y":16.0,"p":[[31.0,16.0,2.01,1.01,0,"1"],[36.1,17.2,2.01,1.01,0,"2"]]},{"r":"J5","v":"Port 4","f":"PinHeader_1x04_Rail","x":57.6,"y":25.43,"p":[[57.6,25.43,1.7,1.0,1,"1"],[60.14,25.43,1.7,1.0,0,"2"],[62.68,25.43,1.7,1.0,0,"3"],[65.22,25.43,1.7,1.0,0,"4"]]},{"r":"H3","v":"M3","f":"MountingHole_3.2mm_M3","x":66.5,"y":41.5,"p":[[66.5,41.5,3.2,3.2,0,""]]},{"r":"R1","v":"33k","f":"R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal","x":31.0,"y":23.0,"p":[[31.0,23.0,1.6,0.8,0,"1"],[41.16,23.0,1.6,0.8,0,"2"]]},{"r":"J2","v":"Port 1","f":"PinHeader_1x04_Rail","x":57.6,"y":17.81,"p":[[57.6,17.81,1.7,1.0,1,"1"],[60.14,17.81,1.7,1.0,0,"2"],[62.68,17.81,1.7,1.0,0,"3"],[65.22,17.81,1.7,1.0,0,"4"]]},{"r":"C1","v":"220u/16V","f":"CP_Radial_D8.0mm_P3.50mm","x":15.5,"y":6.5,"p":[[15.5,6.5,1.6,0.8,1,"1"],[19.0,6.5,1.6,0.8,0,"2"]]},{"r":"J1","v":"Uplink Empfaenger","f":"PinHeader_1x04_Rail","x":57.6,"y":15.27,"p":[[57.6,15.27,1.7,1.0,1,"1"],[60.14,15.27,1.7,1.0,0,"2"],[62.68,15.27,1.7,1.0,0,"3"],[65.22,15.27,1.7,1.0,0,"4"]]},{"r":"J7","v":"Port 6","f":"PinHeader_1x04_Rail","x":57.6,"y":30.51,"p":[[57.6,30.51,1.7,1.0,1,"1"],[60.14,30.51,1.7,1.0,0,"2"],[62.68,30.51,1.7,1.0,0,"3"],[65.22,30.51,1.7,1.0,0,"4"]]},{"r":"J6","v":"Port 5","f":"PinHeader_1x04_Rail","x":57.6,"y":27.97,"p":[[57.6,27.97,1.7,1.0,1,"1"],[60.14,27.97,1.7,1.0,0,"2"],[62.68,27.97,1.7,1.0,0,"3"],[65.22,27.97,1.7,1.0,0,"4"]]},{"r":"H2","v":"M3","f":"MountingHole_3.2mm_M3","x":66.5,"y":3.5,"p":[[66.5,3.5,3.2,3.2,0,""]]},{"r":"J4","v":"Port 3","f":"PinHeader_1x04_Rail","x":57.6,"y":22.89,"p":[[57.6,22.89,1.7,1.0,1,"1"],[60.14,22.89,1.7,1.0,0,"2"],[62.68,22.89,1.7,1.0,0,"3"],[65.22,22.89,1.7,1.0,0,"4"]]},{"r":"H4","v":"M3","f":"MountingHole_3.2mm_M3","x":46.0,"y":41.5,"p":[[46.0,41.5,3.2,3.2,0,""]]},{"r":"R2","v":"10k","f":"R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal","x":31.0,"y":27.5,"p":[[31.0,27.5,1.6,0.8,0,"1"],[41.16,27.5,1.6,0.8,0,"2"]]},{"r":"D1","v":"1N5819","f":"D_DO-41_SOD81_P10.16mm_Horizontal","x":40.0,"y":4.0,"p":[[40.0,4.0,2.2,1.1,1,"1"],[50.16,4.0,2.2,1.1,0,"2"]]},{"r":"C4","v":"100n","f":"C_Disc_D5.0mm_W2.5mm_P5.00mm","x":31.0,"y":32.0,"p":[[31.0,32.0,1.6,0.8,0,"1"],[36.0,32.0,1.6,0.8,0,"2"]]},{"r":"D2","v":"P6KE15CA","f":"D_DO-15_P10.16mm_Horizontal","x":24.0,"y":4.0,"p":[[24.0,4.0,2.4,1.2,1,"1"],[34.16,4.0,2.4,1.2,0,"2"]]},{"r":"J9","v":"BEC IN","f":"PinHeader_1x02_P2.54mm_Vertical","x":4.0,"y":5.0,"p":[[4.0,5.0,1.7,1.0,1,"1"],[6.54,5.0,1.7,1.0,0,"2"]]},{"r":"H1","v":"M3","f":"MountingHole_3.2mm_M3","x":3.5,"y":41.5,"p":[[3.5,41.5,3.2,3.2,0,""]]},{"r":"U1","v":"RP2350-Zero","f":"RP2350-Zero_Socket","x":11.75,"y":27.0,"p":[[1.59,34.62,1.7,1.0,1,"1"],[4.13,34.62,1.7,1.0,0,"2"],[6.67,34.62,1.7,1.0,0,"3"],[9.21,34.62,1.7,1.0,0,"4"],[11.75,34.62,1.7,1.0,0,"5"],[14.29,34.62,1.7,1.0,0,"6"],[16.83,34.62,1.7,1.0,0,"7"],[19.37,34.62,1.7,1.0,0,"8"],[21.91,34.62,1.7,1.0,0,"9"],[21.91,32.08,1.7,1.0,0,"10"],[21.91,29.54,1.7,1.0,0,"11"],[21.91,27.0,1.7,1.0,0,"12"],[21.91,24.46,1.7,1.0,0,"13"],[21.91,21.92,1.7,1.0,0,"14"],[21.91,19.38,1.7,1.0,0,"15"],[19.37,19.38,1.7,1.0,0,"16"],[16.83,19.38,1.7,1.0,0,"17"],[14.29,19.38,1.7,1.0,0,"18"],[11.75,19.38,1.7,1.0,0,"19"],[9.21,19.38,1.7,1.0,0,"20"],[6.67,19.38,1.7,1.0,0,"21"],[4.13,19.38,1.7,1.0,0,"22"],[1.59,19.38,1.7,1.0,0,"23"]]}]};const W=70,H=45,T=1.6;
+const DATA={"Router":[{"r":"C1","v":"100u/10V","f":"CP_Radial_D5.0mm_P2.00mm","x":2.6,"y":22.6,"p":[[2.6,22.6,1.6,0.8,1,"1"],[4.6,22.6,1.6,0.8,0,"2"]]},{"r":"J6","v":"Port 5","f":"PinHeader_1x04_Rail","x":29.0,"y":17.3,"p":[[29.0,17.3,1.7,1.0,1,"1"],[31.54,17.3,1.7,1.0,0,"2"],[34.08,17.3,1.7,1.0,0,"3"],[36.62,17.3,1.7,1.0,0,"4"]]},{"r":"U1","v":"RP2350-Zero","f":"RP2350-Zero_Socket","x":11.75,"y":9.8,"p":[[1.59,17.42,1.7,1.0,1,"1"],[4.13,17.42,1.7,1.0,0,"2"],[6.67,17.42,1.7,1.0,0,"3"],[9.21,17.42,1.7,1.0,0,"4"],[11.75,17.42,1.7,1.0,0,"5"],[14.29,17.42,1.7,1.0,0,"6"],[16.83,17.42,1.7,1.0,0,"7"],[19.37,17.42,1.7,1.0,0,"8"],[21.91,17.42,1.7,1.0,0,"9"],[21.91,14.88,1.7,1.0,0,"10"],[21.91,12.34,1.7,1.0,0,"11"],[21.91,9.8,1.7,1.0,0,"12"],[21.91,7.26,1.7,1.0,0,"13"],[21.91,4.72,1.7,1.0,0,"14"],[21.91,2.18,1.7,1.0,0,"15"],[19.37,2.18,1.7,1.0,0,"16"],[16.83,2.18,1.7,1.0,0,"17"],[14.29,2.18,1.7,1.0,0,"18"],[11.75,2.18,1.7,1.0,0,"19"],[9.21,2.18,1.7,1.0,0,"20"],[6.67,2.18,1.7,1.0,0,"21"],[4.13,2.18,1.7,1.0,0,"22"],[1.59,2.18,1.7,1.0,0,"23"]]},{"r":"J1","v":"Uplink Empfaenger","f":"PinHeader_1x04_Rail","x":29.0,"y":4.6,"p":[[29.0,4.6,1.7,1.0,1,"1"],[31.54,4.6,1.7,1.0,0,"2"],[34.08,4.6,1.7,1.0,0,"3"],[36.62,4.6,1.7,1.0,0,"4"]]},{"r":"J7","v":"Port 6","f":"PinHeader_1x04_Rail","x":29.0,"y":19.84,"p":[[29.0,19.84,1.7,1.0,1,"1"],[31.54,19.84,1.7,1.0,0,"2"],[34.08,19.84,1.7,1.0,0,"3"],[36.62,19.84,1.7,1.0,0,"4"]]},{"r":"J4","v":"Port 3","f":"PinHeader_1x04_Rail","x":29.0,"y":12.22,"p":[[29.0,12.22,1.7,1.0,1,"1"],[31.54,12.22,1.7,1.0,0,"2"],[34.08,12.22,1.7,1.0,0,"3"],[36.62,12.22,1.7,1.0,0,"4"]]},{"r":"F1","v":"PTC 3A/16V MF-RG300","f":"Fuse_Bourns_MF-RG300","x":18.2,"y":21.9,"p":[[18.2,21.9,2.01,1.01,0,"1"],[23.3,23.1,2.01,1.01,0,"2"]]},{"r":"J2","v":"Port 1","f":"PinHeader_1x04_Rail","x":29.0,"y":7.14,"p":[[29.0,7.14,1.7,1.0,1,"1"],[31.54,7.14,1.7,1.0,0,"2"],[34.08,7.14,1.7,1.0,0,"3"],[36.62,7.14,1.7,1.0,0,"4"]]},{"r":"J5","v":"Port 4","f":"PinHeader_1x04_Rail","x":29.0,"y":14.76,"p":[[29.0,14.76,1.7,1.0,1,"1"],[31.54,14.76,1.7,1.0,0,"2"],[34.08,14.76,1.7,1.0,0,"3"],[36.62,14.76,1.7,1.0,0,"4"]]},{"r":"J8","v":"Port 7","f":"PinHeader_1x04_Rail","x":29.0,"y":22.38,"p":[[29.0,22.38,1.7,1.0,1,"1"],[31.54,22.38,1.7,1.0,0,"2"],[34.08,22.38,1.7,1.0,0,"3"],[36.62,22.38,1.7,1.0,0,"4"]]},{"r":"D1","v":"1N5819","f":"D_DO-41_SOD81_P7.62mm_Horizontal","x":7.85,"y":22.6,"p":[[7.85,22.6,2.2,1.1,1,"1"],[15.47,22.6,2.2,1.1,0,"2"]]},{"r":"J3","v":"Port 2","f":"PinHeader_1x04_Rail","x":29.0,"y":9.68,"p":[[29.0,9.68,1.7,1.0,1,"1"],[31.54,9.68,1.7,1.0,0,"2"],[34.08,9.68,1.7,1.0,0,"3"],[36.62,9.68,1.7,1.0,0,"4"]]}]};const W=38.4,H=25.5,T=1.6;
 const stage=document.getElementById('stage');
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -98,23 +97,19 @@ function boardTexture(fps,variant){
     if(f.r[0]==='H')continue;
     const xs=f.p.map(p=>p[0]),ys=f.p.map(p=>p[1]);
     const cx=(Math.min(...xs)+Math.max(...xs))/2, cy=(Math.min(...ys)+Math.max(...ys))/2;
-    if(f.r==='U1'){g.strokeRect(0.2*s,18*s,23.3*s,18*s);txt('U1  RP2350-Zero',11.75,27,1.3,1);
+    if(f.r==='U1'){const cy=f.y;g.strokeRect(0.2*s,(cy-9)*s,23.3*s,18*s);txt('U1  RP2350-Zero',11.75,cy,1.3,1);
       const labs=['5V','G','3V3','29','28','27','26','15','14'];
-      labs.forEach((l,i)=>txt(l,1.59+i*2.54,32.6,0.9));
-      for(let i=0;i<=8;i++)txt(String(i),1.59+i*2.54,21.4,0.9);continue}
+      labs.forEach((l,i)=>txt(l,1.59+i*2.54,cy+5.6,0.9));
+      for(let i=0;i<=8;i++)txt(String(i),1.59+i*2.54,cy-5.6,0.9);continue}
     if(f.r[0]==='J'&&f.r!=='J9')continue;
     let lx=cx,ly=Math.min(...ys)-2.6; if(f.r==='U2')ly=cy-3.6;
-    txt(f.r,lx,ly,1.15,1);
+    continue;
   }
   // Schienenbeschriftung
   const rail=fps.filter(f=>f.r[0]==='J'&&f.r!=='J9').sort((a,b)=>a.y-b.y);
   const px=rail[0].p.map(p=>p[0]).sort((a,b)=>a-b);
   ['G','V','R','T'].forEach((l,i)=>txt(l,px[i],rail[0].y-2.6,1.3,1));
   rail.forEach((f,i)=>{txt(i?String(i):'U',px[0]-2.6,f.y,1.3,1);g.lineWidth=0.12*s;g.strokeRect((px[0]-1.27)*s,(f.y-1.27)*s,(px[3]-px[0]+2.54)*s,2.54*s)});
-  txt('BEC  −  +',6.5,8,1.2,1);
-  txt('CRSF-Router 8',30,38,2.2,1);
-  txt('G=GND  V=+BEC (5-6V, kein HV)  R=zum RX  T=vom TX',30,41,1.0);
-  txt(variant==='Router'?'V2 THT · Router · 7 Ports':'V2 THT · Test · 6 Ports',30,43.2,1.0);
   // Pads (Kupfer, verzinnt)
   g.fillStyle='#c9b46a';
   for(const f of fps)for(const p of f.p){if(!p[3]||f.r[0]==='H')continue;const r=p[2]/2*s;
@@ -165,15 +160,21 @@ function part(f){
     const d=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,2.5,32),f.v==='100n'?mat.orange:mat.blueCap);d.rotation.x=Math.PI/2;g.add(at(d,0,y,0));
     for(const s of[-1,1])lead(g,s*g.userData.len/2,y-1.5);return g}
   if(fp.startsWith('CP_Radial')){const g=axisGroup(P[0],P[1]);
-    g.add(at(cyl(4,11.5,mat.elko,40),0,0.5+11.5/2,0));
-    const st=new THREE.Mesh(new THREE.CylinderGeometry(4.02,4.02,11.4,40,1,true,-0.5,1.0),mat.stripe);st.rotation.y=Math.PI/2; // Minusstreifen Richtung Pad 2
-    g.add(at(st,0,0.5+11.5/2,0));g.add(at(cyl(3.6,0.2,mat.tin,40),0,12.05,0));
+    const R=fp.includes('D5.0')?2.5:4,Hc=fp.includes('D5.0')?11:11.5;g.add(at(cyl(R,Hc,mat.elko,40),0,0.5+Hc/2,0));
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(R+.02,R+.02,Hc-.1,40,1,true,-0.5,1.0),mat.stripe);st.rotation.y=Math.PI/2; // Minusstreifen Richtung Pad 2
+    g.add(at(st,0,0.5+Hc/2,0));g.add(at(cyl(R*.9,0.2,mat.tin,40),0,Hc+.55,0));
     for(const s of[-1,1])lead(g,s*g.userData.len/2,0.5);return g}
   if(fp.startsWith('R_Axial')){const g=axisGroup(P[0],P[1]);const y=1.6;
     const b=new THREE.Mesh(new THREE.CylinderGeometry(1.25,1.25,6.3,24),mat.beige);b.rotation.z=Math.PI/2;g.add(at(b,0,y,0));
     const cols=f.v==='33k'?[0xff8c00,0xff8c00,0xff8c00,0xc9a227]:[0x8b4513,0x111111,0xff8c00,0xc9a227];
     cols.forEach((c,i)=>{const r=new THREE.Mesh(new THREE.CylinderGeometry(1.28,1.28,.5,24),M(c));r.rotation.z=Math.PI/2;g.add(at(r,-2.2+i*1.2+(i==3?.6:0),y,0))});
     legBent(g,g.userData.len,6.3,y);return g}
+  if(fp.startsWith('D_DO')&&fp.includes('Vertical')){const g=axisGroup(P[0],P[1]);const L=g.userData.len,R=1.35,Hb=5.2,y0=0.6;
+    g.add(at(cyl(R,Hb,mat.diode,24),L/2,y0+Hb/2,0));g.add(at(cyl(R+.02,.8,mat.band,24),L/2,y0+Hb-.6,0)); // Kathode oben
+    g.add(at(cyl(.3,y0+1.6,mat.tin,8),L/2,(y0-1.6)/2,0));
+    const top=y0+Hb+1;g.add(at(cyl(.3,top+1.6,mat.tin,8),-L/2,(top-1.6)/2,0));
+    const h=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,L,8),mat.tin);h.rotation.z=Math.PI/2;g.add(at(h,0,top,0));
+    g.add(at(cyl(.3,1,mat.tin,8),L/2,top-.5,0));return g}
   if(fp.startsWith('D_DO')){const g=axisGroup(P[0],P[1]);const big=fp.includes('DO-15');const R=big?1.8:1.35,L=big?7.6:5.2,y=R+.2;
     const b=new THREE.Mesh(new THREE.CylinderGeometry(R,R,L,24),mat.diode);b.rotation.z=Math.PI/2;g.add(at(b,0,y,0));
     const r=new THREE.Mesh(new THREE.CylinderGeometry(R+.02,R+.02,.8,24),mat.band);r.rotation.z=Math.PI/2;g.add(at(r,-L/2+.9,y,0)); // Kathode = Pad 1
@@ -186,24 +187,17 @@ function part(f){
   if(fp.startsWith('Fuse')){const g=axisGroup(P[0],P[1]);const y=4;
     const b=box(Math.max(g.userData.len+2,7.4),8,3,mat.yellow);g.add(at(b,0,y+4,0));
     for(const s of[-1,1])lead(g,s*g.userData.len/2,y);return g}
-  if(fp.startsWith('RP2350')){ // Buchsenleisten + gestecktes Board
+  if(fp.startsWith('RP2350')){ // direkt aufgeloetet (Randkontakte auf die Pads)
     const g=new THREE.Group();g.position.y=T;
-    const rows={top:P.filter(p=>Math.abs(p[1]-19.38)<.1),bot:P.filter(p=>Math.abs(p[1]-34.62)<.1),right:P.filter(p=>Math.abs(p[0]-21.91)<.1&&p[1]>20&&p[1]<34)};
-    const sock=(pts,horiz)=>{const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);const cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;
-      const L=pts.length*2.54;const b=horiz?box(L,8.5,2.54,mat.black):box(2.54,8.5,L,mat.black);g.add(at(b,X(cx),4.25,Z(cy)))};
-    sock(rows.top,true);sock(rows.bot,true);
     const z=new THREE.Group();z.name='zero';
-    if(cur==='Router')sock(rows.right,false);
-    const zy=8.5+2.5; // Stiftleiste im Buchsenkontakt
-    z.add(at(box(23.5,1,18,mat.zeroPcb),X(11.75),zy+.5,Z(27)));
-    z.add(at(box(8.9,3.2,7.4,mat.usb),X(3.4),zy+1+1.6,Z(27)));
-    z.add(at(box(7,0.9,7,mat.chip),X(14),zy+1.45,Z(27)));
-    z.add(at(box(1.6,.6,1.6,M(0xf0f0f0,{emissive:0x113355})),X(19.5),zy+1.3,Z(24)));
-    z.add(at(box(3,1.4,2,M(0x333333)),X(8.5),zy+1.7,Z(21.2)));z.add(at(box(3,1.4,2,M(0x333333)),X(8.5),zy+1.7,Z(32.8)));
-    for(const p of P){if(cur!=='Router'&&p[0]>21&&p[1]>20&&p[1]<34)continue;z.add(at(box(.64,8.5,.64,mat.gold),X(p[0]),zy+1.6-4.25,Z(p[1])))}
-    const strip=(pts,horiz)=>{const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);const cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;const L=pts.length*2.54;
-      z.add(at(horiz?box(L,2.5,2.4,mat.black):box(2.4,2.5,L,mat.black),X(cx),8.5+1.25,Z(cy)))};
-    strip(rows.top,true);strip(rows.bot,true);if(cur==='Router')strip(rows.right,false);
+    const zy=0.05;
+    z.add(at(box(23.5,1,18,mat.zeroPcb),X(11.75),zy+.5,Z(f.y)));
+    z.add(at(box(8.9,3.2,7.4,mat.usb),X(3.4),zy+1+1.6,Z(f.y)));
+    z.add(at(box(7,0.9,7,mat.chip),X(14),zy+1.45,Z(f.y)));
+    z.add(at(box(1.6,.6,1.6,M(0xf0f0f0,{emissive:0x113355})),X(19.5),zy+1.3,Z(f.y-3)));
+    z.add(at(box(3,1.4,2,M(0x333333)),X(8.5),zy+1.7,Z(f.y-5.8)));z.add(at(box(3,1.4,2,M(0x333333)),X(8.5),zy+1.7,Z(f.y+5.8)));
+    for(const p of P){if(cur!=='Router'&&p[0]>21&&p[1]>f.y-7&&p[1]<f.y+7)continue;
+      const s=new THREE.Mesh(new THREE.CylinderGeometry(.55,.8,1.1,12),mat.tin);z.add(at(s,X(p[0]),zy+.55,Z(p[1])))}
     g.add(z);zeroGroup=z;return g;
   }
   return null;
@@ -219,16 +213,16 @@ function build(v){
   const tb=document.querySelector('#bom tbody');tb.innerHTML='';
   const order=r=>({U:0,C:1,D:2,F:3,R:4,J:5,H:6}[r[0]]??9);
   fps.slice().sort((a,b)=>order(a.r)-order(b.r)||a.r.localeCompare(b.r,'de',{numeric:true})).forEach(f=>{
-    const tr=document.createElement('tr');const bau=f.f.replace(/_/g,' ').replace('RP2350-Zero Socket','Buchsenleisten 2,54').replace('PinHeader 1x04 Rail','Stiftleiste 1×4 gerade');
+    const tr=document.createElement('tr');const bau=f.f.replace(/_/g,' ').replace('RP2350-Zero Socket','direkt aufgelötet').replace('PinHeader 1x04 Rail','Stiftleiste 1×4 gerade');
     tr.innerHTML=`<td class="m">${f.r}</td><td>${f.v}</td><td>${bau}</td>`;tb.appendChild(tr)});
 }
 
-const views={iso:[-84,100,126],top:[0,190,0.01],side:[0,22,170]};
+const views={iso:[-46,56,72],top:[0,105,0.01],side:[0,15,95]};
 function view(k){cam.position.set(...views[k]);ctl.target.set(0,k==='top'?0:4,0);ctl.update()}
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
 new ResizeObserver(resize).observe(stage);resize();
 const pressed=(a,b)=>{a.setAttribute('aria-pressed','true');b.setAttribute('aria-pressed','false')};
-vR.onclick=()=>{pressed(vR,vT);build('Router')};vT.onclick=()=>{pressed(vT,vR);build('Test')};
+
 cIso.onclick=()=>view('iso');cTop.onclick=()=>view('top');cSide.onclick=()=>view('side');
 tZero.onclick=()=>{const on=tZero.getAttribute('aria-pressed')!=='true';tZero.setAttribute('aria-pressed',String(on));zeroGroup.visible=on};
 document.fonts.ready.then(()=>build(cur));build('Router');view('iso');
