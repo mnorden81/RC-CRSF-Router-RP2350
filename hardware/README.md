@@ -22,7 +22,7 @@ Die Platine gibt es in zwei Versionen, jede mit eigenem KiCad-Projekt. Alle Baut
 - **Nur vom Empfänger:** Die 5–6 V kommen über die Reihe U (Pin V) vom Empfänger-BEC. Es gibt keinen eigenen BEC-Eingang. **Kein HV-BEC (7,4/8,4 V) am Empfänger!**
 - **Kein Spannungsregler:** Der RP2350-Zero bekommt VBUS über D1 (1N5819, ca. 0,3 V Verlust) an seinen 5-V-Pin. D1 verhindert, dass USB den Empfänger und die Ports speist.
 - **Eine gemeinsame Sicherung** F1 (PTC 3 A) für alle Ports. Bei einem Kurzschluss an einem Port läuft der Empfänger weiter. Nach Beseitigung des Fehlers schaltet sie selbst wieder ein.
-- C1 (220 µF) puffert kurze Stromspitzen der Module.
+- C1 (100 µF) puffert kurze Stromspitzen der Module. Ohne ihn läuft der Router auch.
 - Hat ein Modul eine eigene Versorgung, bekommt es einfach kein V-Kabel, damit zwei Netzteile nicht gegeneinander arbeiten.
 - Große Verbraucher (Lasten der Multiswitche, Lautsprecher-Verstärker) nicht über diese Platine versorgen.
 - **Keine Spannungsmessung:** GP26 bleibt frei, in Lua „Spannung senden“ aus lassen.
@@ -31,10 +31,10 @@ Die Platine gibt es in zwei Versionen, jede mit eigenem KiCad-Projekt. Alle Baut
 
 | Ref | Anzahl | Wert | Bauform | Hinweis |
 |---|---|---|---|---|
-| U1 | 1 | Waveshare RP2350-Zero | Buchsenleisten 2× 1×9 (+ 1× 1×5 bei Router), 2,54 mm | gesteckt |
+| U1 | 1 | Waveshare RP2350-Zero | direkt aufgelötet | Randkontakte auf die Pads gelötet, ohne Buchsenleisten |
 | D1 | 1 | 1N5819 | DO-41 | VBUS zum 5-V-Pin, kein Rückstrom bei USB |
 | F1 | 1 | PTC 3 A / 16 V, Bourns MF-RG300 | radial | gemeinsame Sicherung aller Ports |
-| C1 | 1 | 220 µF / 16 V | Elko radial D 8 mm, RM 3,5 | |
+| C1 | 1 | 100 µF / 10 V | Elko radial Ø 5 mm, RM 2 | puffert Stromspitzen, kann zur Not entfallen |
 | J1–J8 / J1–J7 | 8 / 7 | Stiftleiste 1×4 | 2,54 mm, gerade | Router / Test |
 | H1–H4 | 4 | Bohrung M3 | | |
 
@@ -54,7 +54,7 @@ Erstellt im KiCad-7-Format, KiCad 9 öffnet und aktualisiert es beim ersten Spei
 
 **Nach dem Öffnen:** Routing (z. B. Freerouting), dann DRC. Vor dem Routing meldet der DRC nur offene Verbindungen und Hinweise zum Bestückungsdruck.
 
-**RP2350-Zero bei der Router-Version:** An der unteren Kante hat das Board nur Lötpads (GP9–GP13). Dort eine kurze 5er-Stiftleiste einlöten, die Platine hat an dieser Stelle eine 5er-Buchse (Buchse auf drei Seiten). Bei der Test-Version bleibt die Kante frei, die Löcher für die 5er-Buchse sind im Footprint vorhanden, werden aber nicht bestückt.
+**RP2350-Zero direkt aufgelötet:** Das Board liegt flach auf der Platine, seine Randkontakte werden auf die Pads gelötet (alternativ kurze Stiftleisten durch beide Platinen). Die Router-Version braucht dabei auch die 5 Pads an der Unterkante (GP9–GP13), bei der Test-Version bleiben sie unverlötet. Vor dem Auflöten die Firmware einmal per USB aufspielen und testen.
 
 ## Steckerleiste (2,54 mm, gerade)
 
