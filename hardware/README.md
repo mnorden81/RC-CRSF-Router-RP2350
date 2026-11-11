@@ -6,8 +6,8 @@ Die Platine gibt es in zwei Versionen, jede mit eigenem KiCad-Projekt. Alle Baut
 
 | Version | Ordner | Ports | Pins am RP2350-Zero | Variante in pins.h | Platine |
 |---|---|---|---|---|---|
-| **Router** | [`Router-V2/`](Router-V2/) | Eingang + 7 Ports | alle: beide seitlichen Leisten **und** die 5 Pads unten (GP9–GP13) | `VARIANTE_ROUTER` (Vorgabe) | 44,6 × 23,5 mm, 2 Lagen |
-| **Test** | [`Test-V2/`](Test-V2/) | Eingang + 6 Ports | nur die beiden seitlichen Leisten, Pads unten frei | `VARIANTE_TEST` | 44,6 × 23,5 mm, 2 Lagen |
+| **Router** | [`Router-V2/`](Router-V2/) | Eingang + 7 Ports | alle: beide seitlichen Leisten **und** die 5 Pads unten (GP9–GP13) | `VARIANTE_ROUTER` (Vorgabe) | 38,4 × 25,5 mm, 2 Lagen |
+| **Test** | [`Test-V2/`](Test-V2/) | Eingang + 6 Ports | nur die beiden seitlichen Leisten, Pads unten frei | `VARIANTE_TEST` | 38,4 × 25,5 mm, 2 Lagen |
 
 > Stand 10.11.2026: Schaltplan fertig, Bauteile platziert, Netze geprüft, DRC ohne Abstandsfehler. **Noch nicht geroutet.** Footprint des RP2350-Zero am echten Board und Abmessungen von F1 im Datenblatt vor der Bestellung prüfen. Mehr als 8 UARTs schafft der RP2350 nicht (2 Hardware-UARTs + 6 PIO-UARTs), deshalb sind 7 Ports das Maximum.
 
@@ -19,7 +19,7 @@ Die Platine gibt es in zwei Versionen, jede mit eigenem KiCad-Projekt. Alle Baut
 
 ## Aufbau so kompakt wie möglich (11.11.2026)
 
-- Platine 44,6 × 23,5 mm: links der RP2350-Zero (USB-C ragt etwas über die Kante), in der Mitte C1, D1 (stehend) und F1 (stehend), rechts die Steckerleiste.
+- Platine 38,4 × 25,5 mm: links der RP2350-Zero (USB-C ragt etwas über die Kante), darunter in einer Reihe parallel zum Zero C1, D1 (stehend) und F1, rechts die Steckerleiste.
 - Keine Befestigungslöcher. Befestigung z. B. mit doppelseitigem Klebeband oder Schrumpfschlauch.
 - Beschriftung (Name, G/V/R/T-Erklärung, Hinweis „kein HV-BEC“) auf der Unterseite. Oben nur G V R T und die Reihen U, 1–7.
 - Eng, aber mit 2 Lagen gut routbar: zwischen den Pads passt je eine Leiterbahn 0,3–0,4 mm.
