@@ -9,7 +9,7 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 | **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
 | **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | keine, nur für das Steckbrett |
 
-> Stand: Firmware **v0.4.0** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste), kompiliert und mit Host-Tests geprüft, **noch nicht auf Hardware getestet**. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis.
+> Stand 11.11.2026: Platine (THT, 38,4 × 25,5 mm) **geroutet**, noch nicht bestellt. Firmware **v0.4.0** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste), kompiliert und mit Host-Tests geprüft, **noch nicht auf Hardware getestet**. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis.
 
 | Testaufbau | RP2350-Zero auf dem Steckbrett |
 |---|---|
