@@ -6,8 +6,8 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 
 | Version | Ports | Pins am RP2350-Zero | Im Sender | Platine |
 |---|---|---|---|---|
-| **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router-V2](hardware/Router-V2/) |
-| **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | [hardware/Test-V2](hardware/Test-V2/) |
+| **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
+| **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | keine, nur für das Steckbrett |
 
 > Stand: Firmware **v0.4.0** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste), kompiliert und mit Host-Tests geprüft, **noch nicht auf Hardware getestet**. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis.
 
@@ -122,7 +122,7 @@ Keine weiteren Bibliotheken nötig. Der serielle Monitor (115200) zeigt alle 10 
 |---|---|
 | `firmware/RC_CRSF_Router_RP2350/` | Arduino-Sketch (siehe [firmware/README.md](firmware/README.md)) |
 | `tests/` | Host-Tests des Routers (`sh tests/run_tests.sh`) |
-| `hardware/Router-V2/`, `hardware/Test-V2/` | KiCad-Projekte der beiden Versionen, nur THT-Bauteile, plus 3D-Modell `hardware/3d-modell-v2.html` (siehe [hardware/README.md](hardware/README.md)) |
+| `hardware/Router/` | KiCad-Projekt der Router-Platine, nur THT-Bauteile, plus 3D-Modell `hardware/3d-modell.html` (siehe [hardware/README.md](hardware/README.md)) |
 | `docs/` | Projektbeschreibung (DOCX), Fotos unter `docs/bilder/` |
 
 ## Herkunft

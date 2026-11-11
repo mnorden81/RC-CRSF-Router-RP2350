@@ -943,7 +943,7 @@
   (gr_text "R=zum RX  T=vom TX" (at 119.2 111.5) (layer "B.SilkS") (tstamp 37b05fc7-3efa-4a49-b790-b9ead5acdfb2)
     (effects (font (size 0.9 0.9) (thickness 0.135)) (justify mirror))
   )
-  (gr_text "V2 THT  Router  2026-11-11" (at 119.2 117) (layer "B.SilkS") (tstamp 4978eb70-5797-4ecc-b730-0db411c3bfba)
+  (gr_text "THT  Router  2026-11-11" (at 119.2 117) (layer "B.SilkS") (tstamp 4978eb70-5797-4ecc-b730-0db411c3bfba)
     (effects (font (size 0.9 0.9) (thickness 0.135)) (justify mirror))
   )
   (gr_text "CRSF-Router 8" (at 119.2 105) (layer "B.SilkS") (tstamp d3482307-fe57-4e76-94dc-ee970f06e101)
