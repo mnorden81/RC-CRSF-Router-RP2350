@@ -6,11 +6,15 @@ Es gibt **eine** Platine für den Router (Ordner [`Router/`](Router/)): Eingang 
 
 Die Firmware-Version **Test** (`VARIANTE_TEST`, Eingang + 6 Ports, nur die seitlichen Leisten) ist nur für den Aufbau auf dem Steckbrett gedacht. Für sie gibt es keine Platine.
 
-> Stand 11.11.2026: **Platine geroutet** (von Martin in KiCad 9 mit Freerouting): 144 Leiterbahn-Stücke, 6 Vias, beide Lagen, keine GND-Fläche. Alle 20 Netze vollständig verbunden, keine Kurzschlüsse (geprüft aus der .kicad_pcb). Vor der Bestellung: DRC in KiCad, Gerber erzeugen, Footprint des RP2350-Zero am echten Board und Abmessungen von F1 im Datenblatt vor der Bestellung prüfen. Mehr als 8 UARTs schafft der RP2350 nicht (2 Hardware-UARTs + 6 PIO-UARTs), deshalb sind 7 Ports das Maximum.
+> Stand 11.11.2026 (abends): **Platine fertig geroutet** (von Martin in KiCad 9, beide Lagen: 144 Leiterbahn-Stücke, 6 Vias, keine Kupferflächen). DRC: 0 Fehler, 0 offene Verbindungen. ERC: 0 Fehler, nur 19 Warnungen „Symbol stimmt nicht mit Bibliothek überein“ bei den Power-Symbolen (harmlos, verschwindet mit „Symbole aus Bibliothek aktualisieren“). Vor der Bestellung noch prüfen: Footprint des RP2350-Zero am echten Board, Abmessungen von F1 im Datenblatt, und die Beschriftung auf der Unterseite (sie liegt teilweise auf Pads, der Hersteller schneidet sie dort weg). Mehr als 8 UARTs schafft der RP2350 nicht (2 Hardware-UARTs + 6 PIO-UARTs), deshalb sind 7 Ports das Maximum.
 
-| Bestückung | Leiterbahnen (rot oben, blau unten) |
+| Oberseite | Unterseite |
 |---|---|
-| ![Platine CRSF-Router 8](Router/vorschau-platine.png) | ![Routing](Router/vorschau-routing.png) |
+| ![Platine CRSF-Router 8, Oberseite](Router/vorschau-platine.png) | ![Platine CRSF-Router 8, Unterseite](Router/vorschau-unterseite.png) |
+
+Leiterbahnen beider Lagen (rot oben, blau unten):
+
+![Leiterbahnen](Router/vorschau-routing.png)
 
 3D-Modell (vereinfachte Bauteilkörper, Maße aus der Platine): [`3d-modell.html`](3d-modell.html) herunterladen und im Browser öffnen (braucht Internet für die 3D-Bibliothek).
 
@@ -51,12 +55,12 @@ Der Ordner `Router/` enthält ein vollständiges Projekt:
 | `RC-CRSF-Router-RP2350_Schaltplan.pdf` | Schaltplan als PDF |
 | `Router8.kicad_sym`, `footprints.pretty/` | Projektbibliothek: Symbol und Footprint RP2350-Zero, Stiftleiste 1×4 für die Schiene |
 | `sym-lib-table`, `fp-lib-table` | binden die Projektbibliothek ein |
-| `vorschau-platine.png` | Bild der Platine von oben (Bestückung) |
+| `vorschau-platine.png`, `vorschau-unterseite.png` | 3D-Ansicht der gerouteten Platine von oben und unten (KiCad-Rendering) |
 | `vorschau-routing.png` | Leiterbahnen beider Lagen |
 
-Aktuell im KiCad-9-Format gespeichert. Leiterbahnen für TX/RX 0,2 mm (bei 420 kBaud und wenigen mA völlig ausreichend), Netzklasse **Power** (GND, VBUS, +5V, +V der Ports) 0,5 mm (trägt ca. 1,5–2 A), Abstand 0,2 mm, Via 0,6/0,3 mm. Das kann jeder übliche Platinenhersteller.
+Gespeichert mit KiCad 9.0. Leiterbahnen für TX/RX 0,2 mm (bei 420 kBaud und wenigen mA völlig ausreichend), Netzklasse **Power** (GND, VBUS, +5V, +V der Ports) 0,5 mm mit Via 0,9/0,5 mm, sonst Via 0,6/0,3 mm, Abstand überall 0,2 mm. Das kann jeder übliche Platinenhersteller.
 
-**Nächste Schritte:** DRC in KiCad, optional GND-Fläche auf der Unterseite, dann Gerber und Bohrdaten für den Hersteller erzeugen.
+**Nächster Schritt:** Gerber- und Bohrdaten für den Hersteller exportieren (KiCad: Datei → Fertigungsdateien). Sie liegen noch nicht im Repo.
 
 **RP2350-Zero direkt aufgelötet:** Das Board liegt flach auf der Platine, seine Randkontakte werden auf die Pads gelötet (alternativ kurze Stiftleisten durch beide Platinen). Dabei auch die 5 Pads an der Unterkante (GP9–GP13) verlöten. Vor dem Auflöten die Firmware einmal per USB aufspielen und testen.
 
