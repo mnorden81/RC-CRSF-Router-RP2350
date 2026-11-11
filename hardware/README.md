@@ -16,8 +16,8 @@ Die Firmware-Version **Test** (`VARIANTE_TEST`, Eingang + 6 Ports, nur die seitl
 
 - Platine 38,4 × 25,5 mm: links der RP2350-Zero (USB-C ragt etwas über die Kante), darunter in einer Reihe parallel zum Zero C1, D1 (liegend) und F1, rechts die Steckerleiste.
 - Keine Befestigungslöcher. Befestigung z. B. mit doppelseitigem Klebeband oder Schrumpfschlauch.
-- Beschriftung (Name, G/V/R/T-Erklärung, Hinweis „kein HV-BEC“) auf der Unterseite. Oben nur G V R T und die Reihen U, 1–7.
-- Eng, aber mit 2 Lagen gut routbar: zwischen den Pads passt je eine Leiterbahn 0,3–0,4 mm.
+- Beschriftung (Name, T/R/V/G-Erklärung, Hinweis „kein HV-BEC“) auf der Unterseite. Oben nur T R V G und die Reihen U, 1–7.
+- Steckerleiste in der Reihenfolge **T R V G** (Signale zum RP2350 hin, GND außen), damit TX/RX auf kurzem Weg zum Zero laufen. Signale 0,2 mm, Abstand 0,2 mm: zwischen zwei Pads der Leiste passt eine Leiterbahn.
 
 ## Versorgung
 
@@ -51,7 +51,7 @@ Der Ordner `Router/` enthält ein vollständiges Projekt:
 | `sym-lib-table`, `fp-lib-table` | binden die Projektbibliothek ein |
 | `vorschau-platine.png` | Bild der Platine von oben |
 
-Erstellt im KiCad-7-Format, KiCad 9 öffnet und aktualisiert es beim ersten Speichern. Leiterbahnen 0,4 mm, Netzklasse **Power** (GND, VBUS, +5V, +V der Ports) 1,0 mm, Abstand 0,3 mm.
+Erstellt im KiCad-7-Format, KiCad 9 öffnet und aktualisiert es beim ersten Speichern. Leiterbahnen für TX/RX 0,2 mm (bei 420 kBaud und wenigen mA völlig ausreichend), Netzklasse **Power** (GND, VBUS, +5V, +V der Ports) 1,0 mm, Abstand 0,2 mm, Via 0,6/0,3 mm. Das kann jeder übliche Platinenhersteller.
 
 **Nach dem Öffnen:** Routing (z. B. Freerouting), dann DRC. Vor dem Routing meldet der DRC nur offene Verbindungen und Hinweise zum Bestückungsdruck.
 
@@ -64,7 +64,7 @@ Erstellt im KiCad-7-Format, KiCad 9 öffnet und aktualisiert es beim ersten Spei
 | U (J1) | Uplink zum Empfänger, von hier kommt die Versorgung |
 | 1–7 (J2–J8) | Port 1–7, +V über die Sicherung F1 |
 
-Spalten von links: **G** = GND (eckiges Pad), **V** = +5–6 V, **R** = Router sendet, an RX des Geräts, **T** = Router empfängt, vom TX des Geräts. Damit wird jedes Kabel gerade gesteckt.
+Spalten von links: **T** = Router empfängt, vom TX des Geräts, **R** = Router sendet, an RX des Geräts, **V** = +5–6 V, **G** = GND (eckiges Pad, rechts außen). Damit wird jedes Kabel gerade gesteckt.
 
 ## Pinbelegung RP2350-Zero
 
