@@ -12,6 +12,10 @@ Die Firmware-Version **Test** (`VARIANTE_TEST`, Eingang + 6 Ports, nur die seitl
 |---|---|
 | ![Platine CRSF-Router 8, Oberseite](Router/vorschau-platine.png) | ![Platine CRSF-Router 8, Unterseite](Router/vorschau-unterseite.png) |
 
+Leiterbahnen beider Lagen (rot oben, blau unten):
+
+![Leiterbahnen](Router/vorschau-routing.png)
+
 3D-Modell (vereinfachte Bauteilkörper, Maße aus der Platine): [`3d-modell.html`](3d-modell.html) herunterladen und im Browser öffnen (braucht Internet für die 3D-Bibliothek).
 
 ## Aufbau so kompakt wie möglich (11.11.2026)
@@ -52,6 +56,7 @@ Der Ordner `Router/` enthält ein vollständiges Projekt:
 | `Router8.kicad_sym`, `footprints.pretty/` | Projektbibliothek: Symbol und Footprint RP2350-Zero, Stiftleiste 1×4 für die Schiene |
 | `sym-lib-table`, `fp-lib-table` | binden die Projektbibliothek ein |
 | `vorschau-platine.png`, `vorschau-unterseite.png` | 3D-Ansicht der gerouteten Platine von oben und unten (KiCad-Rendering) |
+| `vorschau-routing.png` | Leiterbahnen beider Lagen |
 
 Gespeichert mit KiCad 9.0. Leiterbahnen für TX/RX 0,2 mm (bei 420 kBaud und wenigen mA völlig ausreichend), Netzklasse **Power** (GND, VBUS, +5V, +V der Ports) 0,5 mm mit Via 0,9/0,5 mm, sonst Via 0,6/0,3 mm, Abstand überall 0,2 mm. Das kann jeder übliche Platinenhersteller.
 
