@@ -19,7 +19,7 @@ Die Platine gibt es in zwei Versionen, jede mit eigenem KiCad-Projekt. Alle Baut
 
 ## Aufbau so kompakt wie möglich (11.11.2026)
 
-- Platine 38,4 × 25,5 mm: links der RP2350-Zero (USB-C ragt etwas über die Kante), darunter in einer Reihe parallel zum Zero C1, D1 (stehend) und F1, rechts die Steckerleiste.
+- Platine 38,4 × 25,5 mm: links der RP2350-Zero (USB-C ragt etwas über die Kante), darunter in einer Reihe parallel zum Zero C1, D1 (liegend) und F1, rechts die Steckerleiste.
 - Keine Befestigungslöcher. Befestigung z. B. mit doppelseitigem Klebeband oder Schrumpfschlauch.
 - Beschriftung (Name, G/V/R/T-Erklärung, Hinweis „kein HV-BEC“) auf der Unterseite. Oben nur G V R T und die Reihen U, 1–7.
 - Eng, aber mit 2 Lagen gut routbar: zwischen den Pads passt je eine Leiterbahn 0,3–0,4 mm.
@@ -39,7 +39,7 @@ Die Platine gibt es in zwei Versionen, jede mit eigenem KiCad-Projekt. Alle Baut
 | Ref | Anzahl | Wert | Bauform | Hinweis |
 |---|---|---|---|---|
 | U1 | 1 | Waveshare RP2350-Zero | direkt aufgelötet | Randkontakte auf die Pads gelötet, ohne Buchsenleisten |
-| D1 | 1 | 1N5819 | DO-41, stehend (RM 2,54) | VBUS zum 5-V-Pin, kein Rückstrom bei USB |
+| D1 | 1 | 1N5819 | DO-41, liegend (RM 7,62) | VBUS zum 5-V-Pin, kein Rückstrom bei USB |
 | F1 | 1 | PTC 3 A / 16 V, Bourns MF-RG300 | radial, stehend | gemeinsame Sicherung aller Ports |
 | C1 | 1 | 100 µF / 10 V | Elko radial Ø 5 mm, RM 2 | puffert Stromspitzen, kann zur Not entfallen |
 | J1–J8 / J1–J7 | 8 / 7 | Stiftleiste 1×4 | 2,54 mm, gerade | Router / Test |
