@@ -123,6 +123,7 @@ Keine weiteren Bibliotheken nötig. Der serielle Monitor (115200) zeigt alle 10 
 | `firmware/RC_CRSF_Router_RP2350/` | Arduino-Sketch (siehe [firmware/README.md](firmware/README.md)) |
 | `tests/` | Host-Tests des Routers (`sh tests/run_tests.sh`) |
 | `hardware/Router/` | KiCad-Projekt der Router-Platine (geroutet, DRC ohne Fehler), nur THT-Bauteile, plus 3D-Modell `hardware/3d-modell.html` (siehe [hardware/README.md](hardware/README.md)) |
+| `hardware/gehaeuse/` | 3D-Druck-Gehäuse (STL/STEP, CadQuery-Quelle, 3D-Vorschau), siehe [hardware/gehaeuse/README.md](hardware/gehaeuse/README.md) |
 | `docs/` | Projektbeschreibung (DOCX), Fotos unter `docs/bilder/` |
 
 ## Herkunft
