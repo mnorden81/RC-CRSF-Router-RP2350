@@ -9,7 +9,8 @@
    Der Router haengt an einem freien CRSF-Port des Empfaengers (Uplink) und
    verteilt CRSF auf Port 1-7 (Test: 1-6). An jedem Port: Multiswitch, Soundmodul,
    weiterer Router (Kette) oder Sensor.
-     - vom Empfaenger nach unten: alles ausser Anfragen an die eigene Adresse
+     - vom Empfaenger nach unten: alles ausser Anfragen an die eigene Adresse;
+       Anfragen an ein bekanntes Geraet nur an dessen Port (ab v0.4.1)
      - von unten nach oben: alles
      - zwischen den Ports: nie (keine Schleifen)
      - nur vollstaendige Frames mit gueltiger CRC, unveraendert
@@ -17,6 +18,10 @@
      - Filter: RC-Kanaele und LinkStats nach unten an/aus
      - Telemetrie nach oben: alle, hoechstens 50 ... 1 Frame/s je Sensor-Art, aus
      - Geraeteliste: wer an welchem Port haengt (Ping beim Start und auf Abruf)
+   Ab v0.4.1 (Ideen aus dem Router im ELRS-Empfaenger 4.x, ohne Lua-Aenderung):
+     - Adress-Lernen + gezielte Zustellung nach unten
+     - Telemetrie nach oben: neuer Wert ersetzt wartenden alten
+     - Lua-Frames nach oben vor der Telemetrie
 
    ── Ports (pins.h) ────────────────────────────────────────────────────
    Uplink  = Hardware-UART0 (Serial1), TX GP0 / RX GP1, fest 420000 Baud
@@ -61,9 +66,9 @@
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
 #define FW_MINOR 4
-#define FW_PATCH 0
-static const char*   FW_VERSION       = "0.4.0";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 40
+#define FW_PATCH 1
+static const char*   FW_VERSION       = "0.4.1";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 41
 #if defined(VARIANTE_ROUTER)
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
@@ -79,6 +84,10 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 //         LinkStats), Telemetrie-Bremse je Port, Geraeteliste per Ping.
 //         Lua-Menue neu geordnet (neue IDs).
 //         Einstellungen aus v0.3.0 werden uebernommen.
+// v0.4.1: Ideen aus dem ELRS-Empfaenger: Adress-Lernen (Extended-Frames +
+//         Heartbeat) mit gezielter Zustellung nach unten, Telemetrie nach
+//         oben ueberschreiben statt verwerfen, Lua nach oben mit Vorrang.
+//         Lua-Menue und Einstellungen unveraendert.
 
 static constexpr uint32_t UPLINK_BAUD = 420000;
 static constexpr size_t   RX_FIFO     = 512;   // Software-Empfangspuffer je UART
@@ -378,9 +387,10 @@ static void printStatus() {
     char ports[LUA_VIEW_BUF];
     LuaView v = {};
     luaShowPorts(0, v, ports);
-    Serial.printf("RC %s, LQ %u, runter %lu, hoch %lu, verworfen %lu, gefiltert %lu, CRC %lu, Ports [%s], %.2f V, %.1f C\n",
+    Serial.printf("RC %s, LQ %u, runter %lu (gezielt %lu), hoch %lu (ersetzt %lu), verworfen %lu, gefiltert %lu, CRC %lu, Ports [%s], %.2f V, %.1f C\n",
                   busOk ? "ok" : "fehlt", crsf.getLinkStatistics().uplinkLQ,
-                  (unsigned long)router.fwdDown(), (unsigned long)router.fwdUp(),
+                  (unsigned long)router.fwdDown(), (unsigned long)router.targeted(),
+                  (unsigned long)router.fwdUp(), (unsigned long)router.replaced(),
                   (unsigned long)router.dropped(), (unsigned long)router.filtered(),
                   (unsigned long)router.crcErrors(), ports, rxVolt, chipTemp);
 }

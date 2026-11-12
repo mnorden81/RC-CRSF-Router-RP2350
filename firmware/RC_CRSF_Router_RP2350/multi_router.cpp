@@ -30,36 +30,79 @@ bool MrParser::feed(uint8_t b, bool& crcError) {
 }
 
 // ── Warteschlangen ─────────────────────────────────────────────────────
-// Voll: aeltesten RC-Kanal-Frame verwerfen (Aktualitaet vor
-// Vollstaendigkeit, wie in CRSF_ESP32). Ohne RC-Frame in der Schlange wird
-// ein neuer RC-Frame verworfen, andere Frames verdraengen den aeltesten.
+// Lua/Ping/DEVICE_INFO (0x28-0x2D): Vorrang nach oben, zuletzt verworfen
+static bool isPrio(uint8_t type) { return type >= 0x28 && type <= 0x2D; }
+// Telemetrie (Broadcast-Frames < 0x28 ausser RC-Kanaelen)
+static bool isTele(uint8_t type) {
+    return type < 0x28 && type != CRSF_FRAMETYPE_RC_CHANNELS_PACKED && type != 0x17;
+}
+// Quellen-ID bei RPM, Temperatur und Zellen (0x0C-0x0E), sonst 0
+static uint8_t teleSub(const uint8_t* f, uint8_t n) {
+    return (f[2] >= 0x0C && f[2] <= 0x0E && n > 4) ? f[3] : 0;
+}
+
+// Voll: zuerst den aeltesten RC-Kanal-Frame verwerfen (Aktualitaet vor
+// Vollstaendigkeit, wie in CRSF_ESP32), dann den aeltesten Nicht-Lua-Frame,
+// erst zuletzt Lua. Ein neuer RC-Frame verdraengt keinen anderen Frame.
+// Nach oben (upward) zusaetzlich wie im ELRS-Empfaenger:
+//   - Telemetrie gleicher Art (und Quellen-ID) vom selben Port ersetzt
+//     den noch wartenden alten Frame an dessen Platz
+//   - Lua-Frames reihen sich vor der Telemetrie ein (untereinander in
+//     Reihenfolge)
 // Der Kopf wird nie angefasst, wenn er schon teilweise gesendet ist.
 template <uint8_t N>
-bool MultiRouter::enqueue(MrQueue<N>& q, const uint8_t* f, uint8_t n, MrPortStats& st) {
+bool MultiRouter::enqueue(MrQueue<N>& q, const uint8_t* f, uint8_t n, MrPortStats& st,
+                          uint8_t src, bool upward) {
     if (n > MR_FRAME) return false;
-    if (q.count >= N) {
-        uint8_t first = q.txOff ? 1 : 0;
-        int victim = -1;
+    const uint8_t type  = f[2];
+    const uint8_t first = q.txOff ? 1 : 0;
+    if (upward && isTele(type)) {
+        const uint8_t sub = teleSub(f, n);
         for (uint8_t i = first; i < q.count; i++) {
             uint8_t k = (q.head + i) % N;
-            if (q.q[k][2] == CRSF_FRAMETYPE_RC_CHANNELS_PACKED) { victim = i; break; }
+            if (q.qSrc[k] == src && q.q[k][2] == type && teleSub(q.q[k], q.qLen[k]) == sub) {
+                memcpy(q.q[k], f, n);
+                q.qLen[k] = n;
+                st.replaced++;
+                return true;
+            }
         }
+    }
+    if (q.count >= N) {
+        int victim = -1;
+        for (uint8_t i = first; i < q.count && victim < 0; i++)
+            if (q.q[(q.head + i) % N][2] == CRSF_FRAMETYPE_RC_CHANNELS_PACKED) victim = i;
         st.dropped++;
-        if (victim < 0) {
-            if (f[2] == CRSF_FRAMETYPE_RC_CHANNELS_PACKED) return false;
-            victim = first;
-        }
+        if (victim < 0 && type == CRSF_FRAMETYPE_RC_CHANNELS_PACKED) return false;
+        for (uint8_t i = first; i < q.count && victim < 0; i++)
+            if (!isPrio(q.q[(q.head + i) % N][2])) victim = i;
+        if (victim < 0) victim = first;
         for (uint8_t i = victim; i + 1 < q.count; i++) {
             uint8_t a = (q.head + i) % N;
             uint8_t b = (q.head + i + 1) % N;
             memcpy(q.q[a], q.q[b], q.qLen[b]);
             q.qLen[a] = q.qLen[b];
+            q.qSrc[a] = q.qSrc[b];
         }
         q.count--;
     }
-    uint8_t k = (q.head + q.count) % N;
+    // Einfuegestelle: hinten, Lua nach oben hinter den letzten Lua-Frame
+    uint8_t pos = q.count;
+    if (upward && isPrio(type)) {
+        pos = first;
+        while (pos < q.count && isPrio(q.q[(q.head + pos) % N][2])) pos++;
+        for (uint8_t i = q.count; i > pos; i--) {
+            uint8_t a = (q.head + i) % N;
+            uint8_t b = (q.head + i - 1) % N;
+            memcpy(q.q[a], q.q[b], q.qLen[b]);
+            q.qLen[a] = q.qLen[b];
+            q.qSrc[a] = q.qSrc[b];
+        }
+    }
+    uint8_t k = (q.head + pos) % N;
     memcpy(q.q[k], f, n);
     q.qLen[k] = n;
+    q.qSrc[k] = src;
     q.count++;
     return true;
 }
@@ -86,6 +129,11 @@ void MultiRouter::pump(MrQueue<N>& q, Stream* s, MrPortStats& st) {
 }
 
 // ── Router ─────────────────────────────────────────────────────────────
+MultiRouter::MultiRouter() {
+    local_.r = this;
+    memset(addrPort, 0xFF, sizeof(addrPort));
+}
+
 void MultiRouter::begin(Stream* up) { uplink = up; }
 
 void MultiRouter::setPort(uint8_t i, Stream* s) {
@@ -172,7 +220,23 @@ void MultiRouter::learnDevice(uint8_t i, const uint8_t* f, uint8_t n) {
 
 void MultiRouter::clearDevices() {
     memset(devCount, 0, sizeof(devCount));
+    memset(addrPort, 0xFF, sizeof(addrPort));
     devChanges++;
+}
+
+// ── Adress-Lernen (wie CRSFConnector im ELRS-Empfaenger) ───────────────
+// Absender, die nie hinter einem Port sitzen: Broadcast, 0xC8 (gilt hier
+// als Broadcast), Sender, Sendemodul, Empfaenger, ELRS-Lua und wir selbst.
+void MultiRouter::learnAddress(uint8_t i, uint8_t addr) {
+    if (addr == 0x00 || addr == CRSF_SYNC_byte || addr == ownAddr ||
+        addr == CRSF_ADDRESS_RADIO_TRANSMITTER || addr == CRSF_ADDRESS_CRSF_TRANSMITTER ||
+        addr == CRSF_ADDRESS_CRSF_RECEIVER || addr == CRSF_ADDRESS_ELRS_LUA) return;
+    addrPort[addr] = i;   // zuletzt gesehen gewinnt (Geraet umgesteckt)
+}
+
+int MultiRouter::portOf(uint8_t addr) const {
+    uint8_t i = addrPort[addr];
+    return (i < MR_MAX_DOWN && down[i]) ? i : -1;
 }
 
 // Ping (0x28) an Broadcast, Absender = eigene Adresse. Die Geraete
@@ -193,6 +257,16 @@ void MultiRouter::fromUplink(const uint8_t* f, uint8_t n) {
     // (Adresse 8 = Flight-Controller/Sync), die gilt als Broadcast.
     uint8_t type = f[2];
     if (type >= 0x28 && n > 4 && f[3] == ownAddr && ownAddr != CRSF_SYNC_byte) return;
+    // Ziel bekannt: nur an den Port, hinter dem es sitzt
+    if (type >= 0x28 && n > 4) {
+        int t = portOf(f[3]);
+        if (t >= 0) {
+            enqueue(downQ[t], f, n, downStats[t]);
+            fwdDown_++;
+            targeted_++;
+            return;
+        }
+    }
     bool any = false;
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
         if (!down[i]) continue;
@@ -206,6 +280,8 @@ void MultiRouter::fromUplink(const uint8_t* f, uint8_t n) {
 void MultiRouter::fromDown(uint8_t i, const uint8_t* f, uint8_t n) {
     downStats[i].framesIn++;
     downStats[i].lastRxMs = now_ ? now_ : 1;
+    if (f[2] >= 0x28 && n > 5) learnAddress(i, f[4]);
+    else if (f[2] == 0x0B && n >= 6) learnAddress(i, f[4]);   // Heartbeat: int16 MSB, Adresse im 2. Byte
     if (f[2] == CRSF_FRAMETYPE_DEVICE_INFO && n > 5) {
         // Doppelte Adresse: ein Geraet weiter hinten meldet unsere Adresse
         if (f[4] == ownAddr) dupAddr = true;
@@ -215,7 +291,7 @@ void MultiRouter::fromDown(uint8_t i, const uint8_t* f, uint8_t n) {
     }
     if (!uplink) return;
     if (!passUp(i, f, n)) { downStats[i].filtered++; return; }
-    enqueue(upQ, f, n, upStats);
+    enqueue(upQ, f, n, upStats, i, true);
     fwdUp_++;
 }
 
@@ -302,7 +378,7 @@ size_t MrLocalStream::write(const uint8_t* b, size_t n) {
     bool crcErr;
     for (size_t i = 0; i < n; i++) {
         if (txParser.feed(b[i], crcErr) && r && r->uplink)
-            r->enqueue(r->upQ, txParser.buf, txParser.frameLen(), r->upStats);
+            r->enqueue(r->upQ, txParser.buf, txParser.frameLen(), r->upStats, MR_SRC_SELF, true);
     }
     return n;
 }

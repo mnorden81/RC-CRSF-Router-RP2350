@@ -209,7 +209,7 @@ static void testTelemetryBrake() {
     CHECK(up.tx == info);                                         // Telemetrie aus, DEVICE_INFO geht
     CHECK(r.portStats(1).filtered == 1 && r.portStats(0).filtered == 2);
     r.setTelemetry(0, 0); up.tx.clear();
-    p1.feed(bat); p1.feed(bat); r.poll(2001);
+    p1.feed(bat); r.poll(2001); p1.feed(bat); r.poll(2002);
     CHECK(up.tx.size() == 2 * bat.size());                        // alle
 }
 
@@ -272,10 +272,82 @@ static void testConfigV4() {
     CHECK(cfg.portRc[4] == 1);
 }
 
+// v0.4.1: Adress-Lernen und gezielte Zustellung nach unten
+static void testTargetedDelivery() {
+    MultiRouter r; FakeStream up, p[3];
+    r.begin(&up); for (int i = 0; i < 3; i++) r.setPort(i, &p[i]);
+    r.setOwnAddress(0xCF);
+    auto readC3 = frame(0x2C, {0xC3, 0xEA, 0x01, 0x00});   // PARAM_READ an 0xC3
+    up.feed(readC3); r.poll(1);
+    for (int i = 0; i < 3; i++) CHECK(p[i].tx == readC3);    // noch unbekannt -> alle
+    CHECK(r.targeted() == 0 && r.portOf(0xC3) == -1);
+    for (auto& s : p) s.tx.clear();
+    p[1].feed(devInfo(0xEA, 0xC3, "Multiswitch@3"));         // 0xC3 sitzt an Port 2
+    p[2].feed(frame(0x0B, {0x00, 0xC2}));                    // Heartbeat von 0xC2 an Port 3
+    p[0].feed(frame(0x2B, {0xEA, 0xEA, 1, 0, 0}));           // Absender 0xEA wird nie gelernt
+    r.poll(2);
+    CHECK(r.portOf(0xC3) == 1 && r.portOf(0xC2) == 2 && r.portOf(0xEA) == -1);
+    up.feed(readC3); up.feed(frame(0x2D, {0xC2, 0xEA, 3, 1}));
+    auto ping = frame(0x28, {0x00, 0xEA});
+    auto toFc = frame(0x2C, {0xC8, 0xEA, 0x01, 0x00});
+    up.feed(ping); up.feed(toFc); up.feed(rcFrame());
+    r.poll(3);
+    CHECK(contains(p[1].tx, readC3) && !contains(p[0].tx, readC3) && !contains(p[2].tx, readC3));
+    CHECK(contains(p[2].tx, frame(0x2D, {0xC2, 0xEA, 3, 1})) && !contains(p[1].tx, frame(0x2D, {0xC2, 0xEA, 3, 1})));
+    for (int i = 0; i < 3; i++) CHECK(contains(p[i].tx, ping) && contains(p[i].tx, toFc) && contains(p[i].tx, rcFrame()));
+    CHECK(r.targeted() == 2);
+    // Geraet umgesteckt: zuletzt gesehen gewinnt
+    p[0].feed(devInfo(0xEA, 0xC3, "Multiswitch@3")); r.poll(4);
+    CHECK(r.portOf(0xC3) == 0);
+    // Port aus -> wieder an alle
+    r.setPort(0, nullptr);
+    CHECK(r.portOf(0xC3) == -1);
+    r.setPort(0, &p[0]);
+    r.clearDevices();
+    CHECK(r.portOf(0xC3) == -1 && r.portOf(0xC2) == -1);
+}
+
+// v0.4.1: nach oben Ueberschreiben statt Verwerfen, Lua mit Vorrang
+static void testUpReplaceAndPriority() {
+    MultiRouter r; FakeStream up, p1, p2;
+    r.begin(&up); r.setPort(0, &p1); r.setPort(1, &p2);
+    up.room = 0;                                               // Empfaenger nimmt gerade nichts
+    auto bat1 = frame(0x08, {0, 50, 0, 0, 0, 0, 0, 0});
+    auto bat2 = frame(0x08, {0, 51, 0, 0, 0, 0, 0, 0});
+    auto t1   = frame(0x0D, {1, 0, 200}), t1b = frame(0x0D, {1, 0, 201});
+    auto t2   = frame(0x0D, {2, 0, 210});
+    auto lua  = frame(0x2B, {0xEA, 0xC3, 5, 0, 0});
+    auto lua2 = frame(0x2B, {0xEA, 0xC3, 6, 0, 0});
+    p1.feed(bat1); p1.feed(t1); p1.feed(t2); p2.feed(bat1); r.poll(1);
+    p1.feed(bat2); p1.feed(t1b); p1.feed(lua); p1.feed(lua2); r.poll(2);
+    CHECK(r.replaced() == 2);                                  // bat und Temp-Quelle 1 von Port 1
+    up.room = 4096; r.poll(3);
+    // Reihenfolge: Lua zuerst (in Reihenfolge), dann Telemetrie
+    std::vector<uint8_t> want(lua);
+    want.insert(want.end(), lua2.begin(), lua2.end());
+    for (auto* f : {&bat2, &t1b, &t2, &bat1}) want.insert(want.end(), f->begin(), f->end());
+    CHECK(up.tx == want);                                      // bat1 von Port 2 bleibt erhalten
+}
+
+// v0.4.1: volle Warteschlange nach oben: Telemetrie faellt vor Lua weg
+static void testUpOverflowKeepsLua() {
+    MultiRouter r; FakeStream up, p[7];
+    r.begin(&up); for (int i = 0; i < 7; i++) r.setPort(i, &p[i]);
+    up.room = 0;
+    std::vector<std::vector<uint8_t>> luas;
+    for (uint8_t k = 0; k < 4; k++) { luas.push_back(frame(0x2B, {0xEA, 0xC3, k, 0, 0})); p[0].feed(luas.back()); }
+    for (uint8_t k = 0; k < 20; k++) p[1 + k % 6].feed(frame(0x0D, {k, 0, 200}));
+    r.poll(1);
+    up.room = 4096; r.poll(2);
+    for (auto& l : luas) CHECK(contains(up.tx, l));
+    CHECK(r.uplinkStats().dropped > 0);
+}
+
 int main() {
     testDownBroadcast(); testOwnAddressStaysLocal(); testUpAndNoCrossTalk(); testCrcAndGarbage();
     testDuplicateAddress(); testNonBlockingPump(); testQueueOverflow(); testLocalCrsf(); testConfig();
     testDownFilter(); testTelemetryBrake(); testDeviceList(); testParserTimeout(); testConfigV4();
+    testTargetedDelivery(); testUpReplaceAndPriority(); testUpOverflowKeepsLua();
     printf("%d Pruefungen, %d Fehler\n", checks, fails);
     return fails ? 1 : 0;
 }

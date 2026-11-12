@@ -46,11 +46,15 @@ Für die ESP32-Projekte ändert sich dadurch nichts. Vorschlag: die drei Punkte 
 
 Ein halb empfangener Frame verfällt nach 3 ms ohne neue Bytes (alle Ports), damit der nächste Frame nach einer Störung sauber erkannt wird.
 
-## Grenzen von v0.4.0
+## Gezielte Zustellung (ab v0.4.1)
+
+`MultiRouter` merkt sich in `addrPort[256]` je Adresse den Port, von dem zuletzt ein Extended-Frame (ab 0x28) oder Heartbeat (0x0B) mit dieser Absender-Adresse kam. Nie gelernt werden 0x00, 0xC8, 0xEA, 0xEC, 0xEE, 0xEF und die eigene Adresse. Extended-Frames vom Empfänger an eine gelernte Adresse gehen nur an diesen Port. Nach oben ersetzt Telemetrie gleicher Art vom selben Port den noch wartenden Frame, und Frames 0x28–0x2D reihen sich vor der Telemetrie ein. Vorbild ist `CRSFRouter`/`RXOTAConnector` im ELRS-Empfänger 4.x.
+
+## Grenzen von v0.4.1
 
 - Alle Ports nur CRSF. S.Port und GPS an den Ports sind noch nicht eingebaut.
 - Kein WLAN, keine WebUI, Bedienung nur über Lua. Updates per USB.
 - Speichern einer Einstellung blockiert den Chip einige Millisekunden (Flash). Dabei können einzelne Frames verloren gehen; gespeichert wird nur nach Änderungen im Lua-Menü.
-- Keine Adressumsetzung (NAT) und kein Weiterleiten von Port zu Port: jedes Gerät braucht weiter eine eigene Adresse.
+- Keine Adressumsetzung (NAT) und kein Weiterleiten von Port zu Port: jedes Gerät braucht weiter eine eigene Adresse. (Der ELRS-Empfänger leitet zwischen seinen Ports weiter; der Router bewusst nicht, damit keine Schleifen entstehen.)
 - Kein Halbduplex: jeder Port braucht TX und RX.
-- Nicht auf Hardware getestet: alle Neuerungen von v0.4.0, PIO-Belegung Router (12 von 12 State-Machines), Timing der Software-LED, Durchsatz bei 7 aktiven Ports. Die Test-Version (10 von 12) wurde am 05.11.2026 vom Sender erkannt (v0.2.0).
+- Nicht auf Hardware getestet: alle Neuerungen von v0.4.0 und v0.4.1, PIO-Belegung Router (12 von 12 State-Machines), Timing der Software-LED, Durchsatz bei 7 aktiven Ports. Die Test-Version (10 von 12) wurde am 05.11.2026 vom Sender erkannt (v0.2.0).
