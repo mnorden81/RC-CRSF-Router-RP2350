@@ -9,7 +9,7 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 | **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
 | **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | keine, nur für das Steckbrett |
 
-> Stand: Firmware **v0.4.0** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste), kompiliert und mit Host-Tests geprüft, **noch nicht auf Hardware getestet**. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
+> Stand: Firmware **v0.4.1** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste; dazu gezielte Zustellung und Lua-Vorrang nach ELRS-Vorbild), kompiliert und mit Host-Tests geprüft, **noch nicht auf Hardware getestet**. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
 
 | Testaufbau | RP2350-Zero auf dem Steckbrett |
 |---|---|
@@ -19,11 +19,11 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 
 Der Router hängt an einem freien CRSF-Port des Empfängers und verteilt CRSF auf bis zu 7 Geräte (Test-Version: 6): Multiswitche (auch die Ziege-One-Module), Soundmodule, Sensoren oder weitere Router.
 
-- Vom Empfänger nach unten geht alles, außer Anfragen an die eigene Adresse.
+- Vom Empfänger nach unten geht alles, außer Anfragen an die eigene Adresse. Anfragen an ein Gerät, dessen Port der Router schon kennt, gehen nur an diesen Port (ab v0.4.1).
 - Von unten nach oben geht alles (Telemetrie, Lua-Antworten, DEVICE_INFO).
 - Zwischen den Ports geht nichts, so entstehen keine Schleifen.
 - Weitergegeben werden nur vollständige Frames mit gültiger CRC, unverändert.
-- Jeder Port hat eine eigene Warteschlange und sendet nicht blockierend. Ein langsamer Port bremst die anderen nicht aus. Wird es eng, fällt zuerst ein alter RC-Frame weg, Lua-Antworten bleiben erhalten.
+- Jeder Port hat eine eigene Warteschlange und sendet nicht blockierend. Ein langsamer Port bremst die anderen nicht aus. Wird es eng, fällt zuerst ein alter RC-Frame weg, dann Telemetrie, Lua-Antworten zuletzt.
 
 ### Neu in v0.4.0 („Version 2“)
 
@@ -34,6 +34,18 @@ Die Ideen stammen aus dem Vergleich mit dem CRSF-Switch von Wilhelm Meier (wmucp
 | **Filter je Port** | RC-Kanäle (0x16/0x17) und LinkStats (0x14/0x1C/0x1D) nach unten je Port an oder aus. Ping, Lua und Schaltbefehle gehen immer durch. | sofort |
 | **Telemetrie-Bremse je Port** | Telemetrie von unten nach oben: alle, höchstens 50/20/10/5/2/1 Frames pro Sekunde **je Sensor-Art**, oder aus. Bei RPM, Temperatur und Zellen zählt jede Quelle einzeln. DEVICE_INFO und Lua-Antworten gehen immer hoch. | sofort |
 | **Geräteliste** | Der Router fragt 2 s und 6 s nach dem Start alle Ports per Ping ab und merkt sich die Antworten (bis 4 Geräte je Port, auch hinter einem weiteren Router). Lua-Ordner „Geräte“ zeigt sie, „Geräte suchen“ fragt neu ab. Antworten auf den eigenen Ping bleiben im Router. Die USB-Konsole listet jede Änderung. | sofort |
+
+### Neu in v0.4.1 (Ideen aus dem ELRS-Empfänger)
+
+Der ELRS-Empfänger hat seit Version 4.0 selbst einen kleinen CRSF-Router (Funkstrecke, CRSF-Port und auf ESP32-Empfängern ein zweiter UART). Drei seiner Regeln hat der Router übernommen. Im Lua-Menü ändert sich nichts, die Einstellungen bleiben erhalten.
+
+| Funktion | Was sie macht |
+|---|---|
+| **Adress-Lernen + gezielte Zustellung** | Der Router merkt sich, hinter welchem Port welche Adresse sitzt (aus jedem Lua-, Ping- oder Befehls-Frame von unten und aus Heartbeats 0x0B). Lua-Anfragen und Schaltbefehle an ein bekanntes Gerät gehen nur noch an diesen Port. Unbekannte Ziele, Broadcasts (0x00) und 0xC8 gehen weiter an alle. Steckt man ein Gerät um, gilt der Port, von dem es sich zuletzt gemeldet hat. „Geräte suchen“ vergisst alle gelernten Adressen. |
+| **Überschreiben statt Verwerfen** | Wartet noch ein Telemetrie-Frame gleicher Art (bei RPM/Temperatur/Zellen gleicher Quelle) vom selben Port, ersetzt der neue ihn an seinem Platz. So geht immer der neueste Wert hoch, die Schlange läuft nicht voll. |
+| **Lua-Vorrang nach oben** | Ping-Antworten und Lua-Frames (0x28–0x2D) überholen wartende Telemetrie. Das Lua-Menü bleibt flüssig, auch wenn viele Module Telemetrie schicken. |
+
+Die USB-Konsole zeigt dazu „gezielt“ und „ersetzt“ in der Statuszeile.
 
 Zum Merken: Schaltet man an einem Port die RC-Kanäle ab, sieht ein Gerät dort (auch ein weiterer Router) kein RC-Signal mehr und geht in Failsafe.
 
@@ -53,7 +65,7 @@ Ab v0.4.0 werden die Feld-IDs fortlaufend vergeben, sie haben sich gegenüber v0
 
 | Eintrag | Werte |
 |---|---|
-| Version | z. B. „0.4.0 Router“ |
+| Version | z. B. „0.4.1 Router“ |
 | Ordner **Ports (nach Neustart)** | |
 | ↳ Port 1 … Port 7 | Aus, 57600, 115200, 400000, **420000**, 921600 |
 | Ordner **Filter** → je Port ein Ordner | |
@@ -79,6 +91,14 @@ Ab v0.4.0 werden die Feld-IDs fortlaufend vergeben, sie haben sich gegenüber v0
 | Geraetename | „CRSF-Router8“ bzw. „CRSF-Router8 Test“ |
 
 Router: 65 Felder, Test: 59 Felder (Port 7 fehlt überall). Im Sender erscheint der Router als **CRSF-Router8@15** bzw. **CRSF-Router8 Test@15** (Name@Adresse).
+
+## Brauche ich den Router überhaupt? (ELRS 4.x)
+
+Ab ELRS 4.0 haben **ESP32-Empfänger** einen zweiten seriellen Port („Serial 2“, im ELRS-Lua oder WebUI auf „CRSF“ stellen; bei PWM-Empfängern lassen sich dafür PWM-Pins umstellen). Der Empfänger verteilt CRSF dann selbst zwischen beiden Ports.
+
+- **Bis zu 2 Module** an einem ESP32-Empfänger: kein Router nötig.
+- **Mehr als 2 Module**, **ESP8285-Empfänger** (nur ein CRSF-Port, z. B. EP1/EP2, RP1–RP3) oder Bedarf an Filtern, Telemetrie-Bremse und Geräteliste: Router verwenden.
+- Mit Serial 2 kann der Router auch dort hängen, dann bleibt der erste Port für ein anderes Gerät frei.
 
 ## Mehrere Router
 

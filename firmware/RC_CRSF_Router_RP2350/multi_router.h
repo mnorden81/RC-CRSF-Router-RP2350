@@ -14,6 +14,15 @@
 //   - Geraeteliste: DEVICE_INFO-Frames von unten werden je Port gemerkt.
 //     pingPorts() fragt alle Ports aktiv ab; Antworten an die eigene
 //     Adresse bleiben im Router und gehen nicht zum Empfaenger.
+// Ab v0.4.1 (Ideen aus dem Router im ELRS-Empfaenger 4.x):
+//   - Adress-Lernen: jede Absender-Adresse aus Extended-Frames (ab 0x28)
+//     und Heartbeat (0x0B) wird dem Port zugeordnet, von dem sie kam.
+//     Extended-Frames vom Empfaenger an eine bekannte Adresse gehen nur
+//     noch an diesen Port. Unbekannt, Broadcast (0x00) und 0xC8 -> alle.
+//   - Telemetrie nach oben: ein neuer Wert gleicher Art vom selben Port
+//     ersetzt den noch wartenden alten (Ueberschreiben statt Verwerfen).
+//   - Lua/Ping-Frames (0x28-0x2D) nach oben haben Vorrang vor Telemetrie.
+//   - Volle Warteschlange: zuerst RC-Frame, dann Telemetrie, Lua zuletzt.
 // Nur vollstaendige Frames mit gueltiger CRC, unveraendert (Store and
 // Forward). Jeder Port hat eine eigene Sendewarteschlange; gesendet wird
 // nicht blockierend Byte fuer Byte, solange der UART-FIFO Platz hat. So
@@ -43,6 +52,7 @@
 // Telemetrie nach oben: 0 = alle, MR_TELE_OFF = aus, sonst Mindestabstand
 // in ms je Sensor-Art
 #define MR_TELE_OFF      0xFFFF
+#define MR_SRC_SELF      0xFF  // Herkunft "Router selbst / Empfaenger"
 
 // Frame-Parser (gleicher Ablauf wie read_packets() in CRSF_ESP32)
 struct MrParser {
@@ -60,6 +70,7 @@ template <uint8_t N>
 struct MrQueue {
     uint8_t q[N][MR_FRAME];
     uint8_t qLen[N];
+    uint8_t qSrc[N];     // Herkunft: Port-Index, MR_SRC_SELF = eigene Frames
     uint8_t head  = 0;
     uint8_t count = 0;
     uint8_t txOff = 0;   // vom Kopf schon gesendete Bytes
@@ -71,6 +82,7 @@ struct MrPortStats {
     uint32_t dropped   = 0;   // wegen voller Warteschlange verworfen
     uint32_t crcErrors = 0;
     uint32_t filtered  = 0;   // durch Filter/Telemetrie-Bremse nicht weitergegeben
+    uint32_t replaced  = 0;   // wartender Telemetrie-Frame durch neueren ersetzt
     unsigned long lastRxMs = 0;   // letzter gueltiger Frame, 0 = noch keiner
 };
 
@@ -118,7 +130,7 @@ private:
 
 class MultiRouter {
 public:
-    MultiRouter() { local_.r = this; }
+    MultiRouter();
 
     // uplink = UART zum Empfaenger, down[i] = Port i+1 (nullptr = aus)
     void begin(Stream* uplink);
@@ -136,6 +148,8 @@ public:
     uint8_t deviceCount(uint8_t i) const { return i < MR_MAX_DOWN ? devCount[i] : 0; }
     const MrDevice& device(uint8_t i, uint8_t k) const { return dev[i][k]; }
     uint32_t devicesChanged() const { return devChanges; }   // zaehlt bei jeder Aenderung hoch
+    // Gelernte Adressen: Port-Index, hinter dem die Adresse sitzt, sonst -1
+    int      portOf(uint8_t addr) const;
 
     // Jeden Loop aufrufen: lesen, weiterleiten, senden. now = millis()
     void poll(unsigned long now);
@@ -148,6 +162,8 @@ public:
     uint32_t dropped()   const;                        // alle Ports + Uplink
     uint32_t crcErrors() const;                        // alle Ports nach unten
     uint32_t filtered()  const;                        // alle Ports, durch Filter/Bremse
+    uint32_t targeted()  const { return targeted_; }   // gezielt an nur einen Port
+    uint32_t replaced()  const { return upStats.replaced; }   // Telemetrie ueberschrieben
     bool     duplicateAddress() const { return dupAddr; }
     const MrPortStats& uplinkStats() const { return upStats; }
     const MrPortStats& portStats(uint8_t i) const { return downStats[i]; }
@@ -157,13 +173,15 @@ public:
 
 private:
     friend class MrLocalStream;
-    template <uint8_t N> bool enqueue(MrQueue<N>& q, const uint8_t* f, uint8_t n, MrPortStats& st);
+    template <uint8_t N> bool enqueue(MrQueue<N>& q, const uint8_t* f, uint8_t n, MrPortStats& st,
+                                      uint8_t src = MR_SRC_SELF, bool upward = false);
     template <uint8_t N> void pump(MrQueue<N>& q, Stream* s, MrPortStats& st);
     void fromUplink(const uint8_t* f, uint8_t n);
     void fromDown(uint8_t i, const uint8_t* f, uint8_t n);
     bool passDown(uint8_t i, uint8_t type);
     bool passUp(uint8_t i, const uint8_t* f, uint8_t n);
     void learnDevice(uint8_t i, const uint8_t* f, uint8_t n);
+    void learnAddress(uint8_t i, uint8_t addr);
     void readPort(Stream* s, MrParser& p, unsigned long& lastByte, bool up, uint8_t i);
 
     Stream*   uplink = nullptr;
@@ -179,10 +197,11 @@ private:
     MrDevice    dev[MR_MAX_DOWN][MR_DEV_PER_PORT] = {};
     uint8_t     devCount[MR_MAX_DOWN] = {0};
     uint32_t    devChanges = 0;
+    uint8_t     addrPort[256];   // gelernte Adresse -> Port-Index, 0xFF = unbekannt
     unsigned long upByteMs = 0, downByteMs[MR_MAX_DOWN] = {0};
     MrLocalStream local_;
     uint8_t  ownAddr = 0xCF;
-    uint32_t fwdDown_ = 0, fwdUp_ = 0, localDropped = 0;
+    uint32_t fwdDown_ = 0, fwdUp_ = 0, localDropped = 0, targeted_ = 0;
     bool     dupAddr = false;
     unsigned long now_ = 0;
 };
