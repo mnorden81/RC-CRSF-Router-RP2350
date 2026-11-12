@@ -18,6 +18,8 @@ Leiterbahnen beider Lagen (rot oben, blau unten):
 
 3D-Modell (vereinfachte Bauteilkörper, Maße aus der Platine): [`3d-modell.html`](3d-modell.html) herunterladen und im Browser öffnen (braucht Internet für die 3D-Bibliothek).
 
+**Gehäuse für den 3D-Druck:** Unterteil und Deckel zum Aufklipsen, Steckerfeld oben und rechts offen, siehe [`gehaeuse/`](gehaeuse/).
+
 ## Aufbau so kompakt wie möglich (11.11.2026)
 
 - Platine 38,4 × 25,5 mm: links der RP2350-Zero (USB-C ragt etwas über die Kante), darunter in einer Reihe parallel zum Zero C1, D1 (liegend) und F1, rechts die Steckerleiste.
