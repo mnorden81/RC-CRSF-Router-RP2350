@@ -39,7 +39,7 @@ uint8_t statusLedMode(const StatusLedInput& in, unsigned long nowMs);
 // t = Zeit seit Beginn des Musters
 bool    statusLedOn(uint8_t mode, unsigned long t);
 
-#if defined(ARDUINO) && defined(ESP32)   // RP2350-Kopie: nur ESP32
+#if defined(ARDUINO) && defined(ESP32)   // nur ESP32 (RP2350-Auszug nutzt den Rest, seit 1.3.0)
 class StatusLed {
 public:
     // pin < 0 = keine LED. ws2812: RGB-LED (z. B. ESP32-S3-Zero GPIO 21),

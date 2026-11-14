@@ -68,9 +68,9 @@
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
 #define FW_MINOR 4
-#define FW_PATCH 2
-static const char*   FW_VERSION       = "0.4.2";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 42
+#define FW_PATCH 3
+static const char*   FW_VERSION       = "0.4.3";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 43
 #if defined(VARIANTE_ROUTER)
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
@@ -90,6 +90,11 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 //         Heartbeat) mit gezielter Zustellung nach unten, Telemetrie nach
 //         oben ueberschreiben statt verwerfen, Lua nach oben mit Vorrang.
 //         Lua-Menue und Einstellungen unveraendert.
+// v0.4.3: RC_Common-Auszug auf 1.3.0 (unveraendert, keine eigenen Anpassungen
+//         mehr): lange Lua-Auswahlfelder (z. B. "Spannung Korrektur") kommen
+//         Chunk fuer Chunk wie vom Sender angefragt, vorher fehlten sie im
+//         ELRS-Lua. "Spannung Korrektur" ausgeblendet, solange "Spannung
+//         senden" auf Aus steht (CRSF hidden, Feld-IDs bleiben).
 // v0.4.2: Adresskonflikt deutlicher: LED blau statt gelb (sah auf dem
 //         RP2350-Zero gruen aus), "Adresskonflikt" beim Port in der
 //         Geraeteliste, "Geraete suchen" setzt den Konflikt zurueck.
@@ -235,6 +240,7 @@ static void    luaSetAddr(uint8_t, uint8_t v)   { cfg.moduleAddr = v; crsf.setDe
 
 static uint8_t luaGetVMode(uint8_t)             { return cfg.voltMode; }
 static void    luaSetVMode(uint8_t, uint8_t v)  { cfg.voltMode = v; cfgMarkDirty(); }
+static void    luaViewVCorr(uint8_t, LuaView& v, char*) { if (cfg.voltMode == 0) v.hidden = true; }   // v0.4.3
 static uint8_t luaGetVCorr(uint8_t)             { return (uint8_t)(cfg.voltCorr + 5); }
 static void    luaSetVCorr(uint8_t, uint8_t v)  { cfg.voltCorr = (int8_t)v - 5; cfgMarkDirty(); }
 static uint8_t luaGetTSend(uint8_t)             { return cfg.tempSend; }
@@ -307,7 +313,7 @@ static void buildLuaMenu() {
     const uint8_t fTele = id++;
     m.folder(fTele, 0, "Telemetrie");
     m.select(id++, fTele, "Spannung senden", "Aus;als RxBt;als Zellen", luaGetVMode, luaSetVMode);
-    m.select(id++, fTele, "Spannung Korrektur", "-0.5V;-0.4V;-0.3V;-0.2V;-0.1V;0.0V;+0.1V;+0.2V;+0.3V;+0.4V;+0.5V", luaGetVCorr, luaSetVCorr);
+    m.select(id++, fTele, "Spannung Korrektur", "-0.5V;-0.4V;-0.3V;-0.2V;-0.1V;0.0V;+0.1V;+0.2V;+0.3V;+0.4V;+0.5V", luaGetVCorr, luaSetVCorr)->view = luaViewVCorr;
     m.info(id++, fTele, "Spannung", "")->view = luaShowVolt;
     m.select(id++, fTele, "Temperatur senden", AUS_EIN, luaGetTSend, luaSetTSend);
     m.info(id++, fTele, "Chiptemperatur", "")->view = luaShowTemp;
