@@ -122,19 +122,44 @@ Lage am Board (Oberseite, USB oben): rechte Leiste GP0–GP8, untere Kante GP9�
 
 TX des Routers an RX des Geräts und umgekehrt, GND gemeinsam. Details und Schaltplan: [hardware/README.md](hardware/README.md).
 
-## Flashen
+## Firmware flashen
 
-**Ohne Software:** BOOT-Taste gedrückt halten und das USB-C-Kabel einstecken. Am PC erscheint das Laufwerk **RP2350**. Die passende `.uf2`-Datei (aus GitHub Actions: `CRSF-Router8_Router.uf2` oder `CRSF-Router8_Test.uf2`, oder aus der Arduino IDE) darauf ziehen, der Router startet von selbst neu.
+Der RP2350 hat kein WLAN, Updates gehen immer über USB. Am einfachsten ist Weg 1, dafür braucht man keine Software.
 
-**Arduino IDE:**
-1. Datei → Einstellungen → Zusätzliche Boardverwalter-URLs:
+### Weg 1: Fertige Datei aus GitHub (ohne Arduino IDE)
+
+1. Auf GitHub angemeldet sein (sonst gibt es keinen Download-Knopf).
+2. In diesem Repo oben auf **Actions** klicken, links den Workflow **Firmware bauen** wählen.
+3. Den obersten Lauf mit grünem Haken öffnen (Branch `main`).
+4. Ganz unten unter **Artifacts** **crsf-router8-rp2350-Router** herunterladen (für das Steckbrett: **crsf-router8-rp2350-Test**) und die ZIP-Datei entpacken. Darin liegt `CRSF-Router8_Router.uf2` bzw. `CRSF-Router8_Test.uf2`.
+   Steht dort nichts (Artefakte werden nach 90 Tagen gelöscht): rechts oben **Run workflow** → **Run workflow** klicken, nach ca. 3 Minuten ist ein neuer Lauf fertig.
+5. Am RP2350-Zero die Taste **BOOT** gedrückt halten und dabei das USB-C-**Datenkabel** einstecken, dann loslassen.
+6. Am PC erscheint ein neues Laufwerk **RP2350** (wie ein USB-Stick).
+7. Die `.uf2`-Datei mit der Maus auf dieses Laufwerk ziehen. Das Laufwerk verschwindet, der Router startet von selbst neu. Fertig.
+
+### Weg 2: Arduino IDE
+
+**Einmalig einrichten**
+
+1. Arduino IDE 2.x installieren (https://www.arduino.cc/en/software).
+2. **Datei → Einstellungen → Zusätzliche Boardverwalter-URLs**:
    `https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json`
-2. Boardverwaltung: „Raspberry Pi Pico/RP2040/RP2350“ Version **6.3.2** installieren.
-3. Board **Waveshare RP2350 Zero** wählen, `firmware/RC_CRSF_Router_RP2350/RC_CRSF_Router_RP2350.ino` öffnen.
-   Version wählen: oben in `pins.h` steht `#define VARIANTE_ROUTER` (Vorgabe). Für die Test-Version diese Zeile mit `//` auskommentieren und bei `//#define VARIANTE_TEST` die `//` entfernen.
-4. Beim allerersten Mal mit gedrückter BOOT-Taste einstecken, Port „UF2 Board“ wählen, Hochladen. Danach geht es ohne Taste über den COM-Port.
+3. **Werkzeuge → Board → Boardverwalter**: „pico“ suchen, **Raspberry Pi Pico/RP2040/RP2350** (von Earle F. Philhower) in Version **6.3.2** installieren.
+4. Weitere Bibliotheken sind nicht nötig.
 
-Keine weiteren Bibliotheken nötig. Der serielle Monitor (115200) zeigt alle 10 s eine Statuszeile.
+**Flashen**
+
+1. Repo herunterladen: oben auf GitHub **Code → Download ZIP**, entpacken (oder den vorhandenen Ordner nehmen).
+2. **Datei → Öffnen** und `firmware/RC_CRSF_Router_RP2350/RC_CRSF_Router_RP2350.ino` wählen.
+3. Version wählen: oben in `pins.h` steht `#define VARIANTE_ROUTER` (Vorgabe, für die Platine). Für die Test-Version (Steckbrett) diese Zeile mit `//` auskommentieren und bei `//#define VARIANTE_TEST` die `//` entfernen.
+4. **Werkzeuge → Board → Raspberry Pi Pico/RP2040/RP2350 → Waveshare RP2350 Zero** wählen. Die übrigen Einstellungen unter Werkzeuge bleiben auf Standard.
+5. Beim **allerersten Mal**: BOOT-Taste gedrückt halten, USB einstecken, loslassen. Unter **Werkzeuge → Port** „UF2 Board“ wählen.
+   Ab dem zweiten Mal: einfach einstecken und unter **Werkzeuge → Port** den COM-Port wählen.
+6. Auf den Pfeil **Hochladen** klicken. Der Router startet danach von selbst neu.
+
+**Wenn das Hochladen nicht klappt** (kein Port oder „No drive to deploy“): USB abziehen, BOOT gedrückt halten, wieder einstecken und mit Port „UF2 Board“ erneut hochladen.
+
+Der serielle Monitor (115200) zeigt alle 10 s eine Statuszeile.
 
 ## Aufbau des Repos
 
