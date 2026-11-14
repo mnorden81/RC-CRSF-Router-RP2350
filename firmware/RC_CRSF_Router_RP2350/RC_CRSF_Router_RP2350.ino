@@ -35,12 +35,14 @@
    ── Adresse ───────────────────────────────────────────────────────────
    Eigene WM-Moduladresse 0-15 -> CRSF-Adresse 0xC0+Adresse, Vorgabe 15.
    Mehrere Router im Modell (auch S3-Router) brauchen verschiedene Adressen.
-   Meldet ein Geraet weiter hinten dieselbe Adresse, blinkt die LED gelb.
+   Meldet ein Geraet weiter hinten dieselbe Adresse, blinkt die LED blau.
 
    ── Status-LED (WS2812, GP16) ─────────────────────────────────────────
    gruen langsam      RC-Signal in Ordnung
    rot schnell        kein RC-Signal / Failsafe
-   gelb Doppelblitz   Adresskonflikt oder ein Port liess sich nicht starten
+   blau Doppelblitz   Adresskonflikt: ein Geraet an einem Port hat dieselbe
+                      Adresse (Lua "Geraete" zeigt den Port)
+   gelb Doppelblitz   ein Port liess sich nicht starten
    Rot und Gruen vertauscht? Lua "LED Farbfolge" auf RGB stellen.
 
    ── Telemetrie (beides Vorgabe aus) ───────────────────────────────────
@@ -66,9 +68,9 @@
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
 #define FW_MINOR 4
-#define FW_PATCH 1
-static const char*   FW_VERSION       = "0.4.1";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 41
+#define FW_PATCH 2
+static const char*   FW_VERSION       = "0.4.2";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 42
 #if defined(VARIANTE_ROUTER)
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
@@ -88,6 +90,9 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 //         Heartbeat) mit gezielter Zustellung nach unten, Telemetrie nach
 //         oben ueberschreiben statt verwerfen, Lua nach oben mit Vorrang.
 //         Lua-Menue und Einstellungen unveraendert.
+// v0.4.2: Adresskonflikt deutlicher: LED blau statt gelb (sah auf dem
+//         RP2350-Zero gruen aus), "Adresskonflikt" beim Port in der
+//         Geraeteliste, "Geraete suchen" setzt den Konflikt zurueck.
 
 static constexpr uint32_t UPLINK_BAUD = 420000;
 static constexpr size_t   RX_FIFO     = 512;   // Software-Empfangspuffer je UART
@@ -183,6 +188,7 @@ static void searchDevices() {
 static void portDevicesText(uint8_t i, char* buf, size_t max) {
     if (portState[i] == PORT_OFF)  { snprintf(buf, max, "aus"); return; }
     if (portState[i] == PORT_FAIL) { snprintf(buf, max, "Fehler"); return; }
+    if (router.duplicateOnPort(i)) { snprintf(buf, max, "Adresskonflikt! %s@%u", DEVICE_NAME, (unsigned)cfg.moduleAddr); return; }
     uint8_t n = router.deviceCount(i);
     if (n == 0) { snprintf(buf, max, router.portAlive(i, millis()) ? "aktiv, ohne Namen" : "kein Geraet"); return; }
     size_t k = 0;
@@ -337,7 +343,8 @@ static void updateLed() {
     static unsigned long start = 0;
     if (mode != ledMode) { ledMode = mode; start = now; }
     uint8_t r = 0, g = 0, b = 0;
-    if (mode == SLED_DOUBLE)    { r = 40; g = 28; }   // gelb
+    if (mode == SLED_DOUBLE && router.duplicateAddress()) b = 60;   // blau: Adresskonflikt
+    else if (mode == SLED_DOUBLE) { r = 40; g = 28; } // gelb: Port-Fehler
     else if (mode == SLED_FAST) { r = 40; }           // rot
     else                        { g = 40; }           // gruen
     bool on = statusLedOn(mode, now - start);
@@ -401,6 +408,8 @@ static void printDevices() {
     if (router.devicesChanged() == seen) return;
     seen = router.devicesChanged();
     for (uint8_t i = 0; i < PORT_COUNT; i++) {
+        if (router.duplicateOnPort(i))
+            Serial.printf("Port %u: Adresskonflikt! Ein Geraet meldet unsere Adresse 0x%02X\n", i + 1, ownAddr());
         if (router.deviceCount(i) == 0) continue;
         Serial.printf("Port %u:", i + 1);
         for (uint8_t d = 0; d < router.deviceCount(i); d++)

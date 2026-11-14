@@ -102,6 +102,10 @@ static void testDuplicateAddress() {
     CHECK(!r.duplicateAddress());
     p1.feed(frame(0x29, {0xEA, 0xCE, 'X', 0})); r.poll(2);
     CHECK(r.duplicateAddress());
+    // v0.4.2: Port wird gemerkt, neue Suche setzt zurueck
+    CHECK(r.duplicateOnPort(0) && !r.duplicateOnPort(1));
+    r.clearDevices();
+    CHECK(!r.duplicateAddress() && !r.duplicateOnPort(0));
 }
 
 // Langsamer Port: nur wenige Bytes Platz. Frames gehen trotzdem ganz und
