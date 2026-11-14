@@ -225,7 +225,7 @@ void CRSF::set_crsf_channel(uint8_t ch, uint16_t value) {
         channels[ch] = value;
 }
 
-#if defined(ARDUINO) && defined(ESP32)   // RP2350-Kopie: nur ESP32
+#if defined(ARDUINO) && defined(ESP32)   // nur ESP32 (RP2350-Auszug nutzt den Rest, seit 1.3.0)
 void CRSF::init_crsf(HardwareSerial *serialPort, uint8_t rxPin, uint8_t txPin, uint32_t baud) {
   // serialPort wird tatsaechlich verwendet (nicht hart "&Serial2"), damit
   // eine zweite Instanz nicht ebenfalls auf Serial2 landet. nullptr faellt
@@ -313,6 +313,9 @@ void CRSF::crsfDataReceive() {
             paramReadsRx++;
             paramReadSource = crfs_buffer[4];  // Source = Destination fuer Antwort
             paramReadIndex = crfs_buffer[5];  // angefragter Parameter
+            // Chunk-Nummer (seit 1.2.1): lange Eintraege fragt der Sender
+            // Chunk fuer Chunk ab, geantwortet wird nur mit diesem Chunk.
+            paramReadChunk = crfs_buffer[1] >= 6 ? crfs_buffer[6] : 0;
             deviceReadReplyPending = true;
 #if DEBUG_CRSF_TYPE 
             Serial.print("📤 CRSF_FRAMETYPE_PARAMETER_READ Destination: ");
@@ -328,6 +331,7 @@ void CRSF::crsfDataReceive() {
             if (crfs_buffer[3] != deviceAddress &&
                 crfs_buffer[3] != CRSF_ADDRESS_BROADCAST) break;
             paramWritesRx++;
+            paramReadChunk = 0;   // Antwort auf ein Schreiben beginnt bei Chunk 0
             paramWriteIndex = crfs_buffer[5];  // Parameter-Index
             paramWriteValue = crfs_buffer[6];  // Wert
             deviceWriteReplyPending = true;
@@ -482,7 +486,7 @@ void CRSF::read_packets(uint8_t debug) {
 //  Frames ohne Extended-Header (Typ < 0x28, z.B. RC-Kanaele 0x16 und
 //  Link-Statistik 0x14) haben keine Zieladresse und gehen immer weiter.
 // ════════════════════════════════════════════════════════════════════
-#if defined(ARDUINO) && defined(ESP32)   // RP2350-Kopie: nur ESP32
+#if defined(ARDUINO) && defined(ESP32)   // nur ESP32 (RP2350-Auszug nutzt den Rest, seit 1.3.0)
 void CRSF::init_router(HardwareSerial* portB, uint8_t bRx, uint8_t bTx,
                        HardwareSerial* portC, uint8_t cRx, uint8_t cTx,
                        uint32_t bBaud, uint32_t cBaud) {
@@ -549,8 +553,10 @@ void CRSF::routeFromDown(CrsfPort& p) {
         if (!parseByte(p, (uint8_t)p.ser->read())) continue;
         uint8_t n = p.rxLen + 2;
         // Doppelte Adresse: ein Modul weiter hinten meldet unsere Adresse
-        if (p.rx[2] == CRSF_FRAMETYPE_DEVICE_INFO && n > 5 && p.rx[4] == deviceAddress)
+        if (p.rx[2] == CRSF_FRAMETYPE_DEVICE_INFO && n > 5 && p.rx[4] == deviceAddress) {
             duplicateAddress = true;
+            duplicatePorts |= (&p == &portC_) ? 2 : 1;
+        }
         if (portA_.ser) enqueue(portA_, p.rx, n);
         fwdUp++;
     }
@@ -740,7 +746,7 @@ void CRSF::send_param_response_CRSF_UINT8(uint8_t param_id, uint8_t parent, cons
     packet[6] = 0x00; // chunks remaining, 0 chunks remaining after this one
     
     packet[7] = parent; // Parent folder
-    packet[8] = CRSF_UINT8; // Data type
+    packet[8] = CRSF_UINT8 | takeParamHiddenFlag(); // Data type (+ Bit 7 versteckt)
 
     strcpy((char*)&packet[9], name); // Name
 
@@ -891,7 +897,7 @@ void CRSF::send_param_response_CRSF_TEXT_SELECTION(
     uint16_t p = 0;
 
     payload[p++] = parent;
-    payload[p++] = CRSF_TEXT_SELECTION;
+    payload[p++] = CRSF_TEXT_SELECTION | takeParamHiddenFlag();   // + Bit 7 versteckt
 
     // Name
     strcpy((char*)&payload[p], name);
@@ -922,9 +928,16 @@ void CRSF::send_param_response_CRSF_TEXT_SELECTION(
     // Serial.print(total_chunks);
 
     // ----------------------------------------------------
-    // 3. Chunks senden
+    // 3. Nur den angefragten Chunk senden (seit 1.2.1)
     // ----------------------------------------------------
-    for (uint8_t chunk = 0; chunk < total_chunks; chunk++)
+    // Vorher gingen alle Chunks auf einmal raus und die Chunk-Nummer der
+    // Anfrage wurde ignoriert. Das ELRS-Lua fragt Chunk 1, 2 ... einzeln an
+    // und bekam jedes Mal wieder Chunk 0 - Eintraege ueber 55 Byte (z. B.
+    // "Port B Baudrate") wurden nie fertig geladen, der ganze Ordner fehlte.
+    uint8_t want = paramReadChunk < total_chunks ? paramReadChunk : 0;
+    paramReadChunk = 0;
+    offset = (uint16_t)want * MAX_CHUNK;
+    for (uint8_t chunk = want; chunk <= want; chunk++)
     {
         uint8_t remaining = total_chunks - chunk - 1;
         uint8_t size = ((uint16_t)(p - offset) > MAX_CHUNK)
@@ -934,7 +947,10 @@ void CRSF::send_param_response_CRSF_TEXT_SELECTION(
     // Serial.print(" remaining  : ");
     // Serial.print(remaining );
 
-        uint8_t len = 7 + size; // Header + Payload
+        // Laenge = Typ, Ziel, Absender, ID, Rest-Chunks (5) + Nutzdaten + CRC.
+        // Bis 1.2.0 stand hier 7 + size: ein ungenutztes Byte vor der CRC,
+        // das beim Zusammensetzen mehrerer Chunks mitten in die Optionen geriet.
+        uint8_t len = 6 + size;
         uint8_t packet[64];
 
         packet[0] = CRSF_SYNC_byte;
@@ -1022,7 +1038,7 @@ void CRSF::send_param_response_CRSF_FOLDER(uint8_t param_id, uint8_t parent, con
     packet[6] = 0x00; // chunks remaining, 0 chunks remaining after this one
     
     packet[7] = parent; // Parent folder
-    packet[8] = CRSF_FOLDER; // Data type
+    packet[8] = CRSF_FOLDER | takeParamHiddenFlag(); // Data type (+ Bit 7 versteckt)
 
     strcpy((char*)&packet[9], name); // Name
 
@@ -1063,7 +1079,7 @@ void CRSF::send_param_response_CRSF_INFO(uint8_t param_id, uint8_t parent, const
     packet[6] = 0x00; // chunks remaining, 0 chunks remaining after this one
     
     packet[7] = parent; // Parent folder
-    packet[8] = CRSF_INFO; // Data type
+    packet[8] = CRSF_INFO | takeParamHiddenFlag(); // Data type (+ Bit 7 versteckt)
 
     strcpy((char*)&packet[9], name); // Name
     strcpy((char*)&packet[9 + len_name], info); // Info

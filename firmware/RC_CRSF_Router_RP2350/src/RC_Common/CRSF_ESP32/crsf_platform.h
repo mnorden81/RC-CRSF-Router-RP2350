@@ -12,7 +12,7 @@
 #ifdef ARDUINO
 
 #include <Arduino.h>
-#include <initializer_list>   // RP2350-Kopie: arduino-pico bindet es nicht selbst ein
+#include <initializer_list>   // seit 1.3.0: arduino-pico (RP2350) bindet es nicht selbst ein
 
 #else
 

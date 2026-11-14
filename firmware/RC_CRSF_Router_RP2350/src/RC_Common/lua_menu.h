@@ -23,7 +23,7 @@ static constexpr uint8_t LUA_SELECT = 3;
 
 // Was beim Senden tatsaechlich rausgeht. view() darf jedes Feld aendern,
 // z. B. Name oder Grenzen je nach Zustand, oder aus einer Zahl eine Info
-// machen ("Deaktiviert").
+// machen ("Deaktiviert"), oder es ausblenden (hidden).
 struct LuaView {
     uint8_t     type;
     const char* name;
@@ -32,6 +32,10 @@ struct LuaView {
     uint8_t     min;
     uint8_t     max;
     const char* unit;
+    // true = Feld versteckt senden (Bit 7 im Datentyp, RC_Common 1.3.0).
+    // Typ bleibt erhalten, damit das ELRS-Lua das Feld nach einer Aenderung
+    // im selben Ordner neu laedt und wieder einblenden kann.
+    bool        hidden;
 };
 
 typedef uint8_t (*LuaGetFn)(uint8_t arg);

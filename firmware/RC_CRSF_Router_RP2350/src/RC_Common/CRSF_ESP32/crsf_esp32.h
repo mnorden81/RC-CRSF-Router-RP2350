@@ -5,7 +5,7 @@
 // Teil von RC_Common: jedes Projekt traegt eine identische Kopie des
 // Ordners RC_Common; Aenderungen immer in allen Kopien nachziehen und
 // CRSF_ESP32_VERSION hochzaehlen. Aenderungshistorie: README.md hier.
-#define CRSF_ESP32_VERSION "1.1.0"
+#define CRSF_ESP32_VERSION "1.1.1"
 
 #include "crsf_platform.h"
 #include "crsf_esp32_protocol.h"
@@ -43,7 +43,7 @@ class CRSF
 public:
 
     CRSF();
-#if defined(ARDUINO) && defined(ESP32)   // RP2350-Kopie: nur ESP32
+#if defined(ARDUINO) && defined(ESP32)   // nur ESP32 (RP2350-Auszug nutzt den Rest, seit 1.3.0)
     // 4. Parameter "baud" (Default = BAUD_RATE/420000). serialPort ==
     // nullptr faellt auf Serial1 zurueck (der ESP32-C3 hat kein Serial2).
     // Seit 1.1.0 mit groesseren UART-Puffern (vor begin()).
@@ -71,6 +71,8 @@ public:
     uint32_t getDownCrcErrors() const { return downCrcErrors; }
     // Ein Modul weiter hinten in der Kette meldet unsere Adresse
     bool     isDuplicateAddress() const { return duplicateAddress; }
+    // 1.1.1: an welchem Port kam die doppelte Adresse (Bit 0 = B, Bit 1 = C)
+    uint8_t  getDuplicatePorts() const { return duplicatePorts; }
 
     void read_packets(uint8_t debug);
     void send_packets(byte* buffer, size_t length, uint8_t debug);
@@ -125,9 +127,15 @@ public:
     bool getDeviceCommandReplyPending() const { return deviceCommandReplyPending; }
     uint8_t getPingSource()      const { return pingSource; }
     uint8_t getParamReadIndex()  const { return paramReadIndex; }
+    uint8_t getParamReadChunk()  const { return paramReadChunk; }
     uint8_t getParamWriteIndex() const { return paramWriteIndex; }
     uint8_t getParamWriteValue() const { return paramWriteValue; }
     uint8_t getParamReadSource() const { return paramReadSource; }
+    // Naechste Parameter-Antwort als "versteckt" markieren (Bit 7 im
+    // Datentyp, CRSF-Spezifikation). Das ELRS-Lua zeigt solche Felder nicht
+    // an, laedt sie aber weiter nach. Gilt nur fuer die naechste Antwort
+    // (RC_Common 1.3.0).
+    void setNextParamHidden(bool hidden) { paramHidden = hidden; }
     // Eigene CRSF-Geraeteadresse (0xC0..0xCF, abgeleitet aus der WM-Adresse)
     void          setDeviceAddress(uint8_t a) { deviceAddress = a; }
     uint8_t       getDeviceAddress() const { return deviceAddress; }
@@ -175,6 +183,7 @@ private:
     uint32_t fwdDropped    = 0;
     uint32_t downCrcErrors = 0;
     bool     duplicateAddress = false;
+    uint8_t  duplicatePorts = 0;
     unsigned long lastRcFrameMs = 0;
 
     // serial_data/linkStats/info sind Member (nicht global), damit mehrere
@@ -198,8 +207,11 @@ private:
     uint8_t cmdBuffer[CRSF_PACKET_SIZE] = {0}; // gesicherte Kopie des letzten MWSET-Kommandos
     uint8_t pingSource    = 0xEA;  // Source des letzten DEVICE_PING
     uint8_t paramReadIndex  = 0;   // Angefragter Parameter-Index
+    uint8_t paramReadChunk  = 0;   // Angefragter Chunk (RC_Common 1.2.1)
     uint8_t paramWriteIndex = 0;   // Zu schreibender Parameter-Index
     uint8_t paramWriteValue = 0;   // Zu schreibender Wert
+    bool    paramHidden      = false; // RC_Common 1.3.0, siehe setNextParamHidden()
+    uint8_t takeParamHiddenFlag() { uint8_t f = paramHidden ? 0x80 : 0x00; paramHidden = false; return f; }
     uint8_t paramReadSource  = 0xEF; // Source des PARAMETER_READ -> Destination der Antwort
     uint8_t deviceAddress = CRSF_ADDRESS_FLIGHT_CONTROLLER; // eigene CRSF-Adresse (0xC0..0xCF aus WM-Adresse; Default 0xC8)
     unsigned long pingReceivedTime = 0; // Zeitpunkt des letzten Broadcast-Ping (fuer Slot-Delay)

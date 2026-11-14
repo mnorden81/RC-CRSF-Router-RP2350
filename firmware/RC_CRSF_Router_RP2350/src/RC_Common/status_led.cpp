@@ -28,7 +28,7 @@ bool statusLedOn(uint8_t mode, unsigned long t) {
     }
 }
 
-#if defined(ARDUINO) && defined(ESP32)   // RP2350-Kopie: nur ESP32
+#if defined(ARDUINO) && defined(ESP32)   // nur ESP32 (RP2350-Auszug nutzt den Rest, seit 1.3.0)
 void StatusLed::begin(int pin, bool ws2812, uint8_t brightness, bool activeHigh) {
     pin_ = pin; ws_ = ws2812; bright_ = brightness; activeHigh_ = activeHigh;
     if (pin_ < 0) return;

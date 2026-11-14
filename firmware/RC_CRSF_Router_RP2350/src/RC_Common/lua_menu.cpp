@@ -67,6 +67,7 @@ LuaView LuaMenu::viewOf(const LuaItem& it, char* buf) const {
     v.min   = it.min;
     v.max   = it.max;
     v.unit  = it.unit ? it.unit : "";
+    v.hidden = false;
     if (it.view) it.view(it.arg, v, buf);
     return v;
 }
@@ -76,6 +77,8 @@ bool LuaMenu::send(CRSF& crsf, uint8_t id) const {
     if (!it) return false;
     char buf[LUA_VIEW_BUF] = {0};
     LuaView v = viewOf(*it, buf);
+    if (v.type > LUA_SELECT) return false;
+    crsf.setNextParamHidden(v.hidden);
     switch (v.type) {
         case LUA_FOLDER: {
             uint8_t children[CRSF_PACKET_SIZE];
