@@ -9,7 +9,7 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 | **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
 | **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | keine, nur für das Steckbrett |
 
-> Stand: Firmware **v0.4.1** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste; dazu gezielte Zustellung und Lua-Vorrang nach ELRS-Vorbild), kompiliert und mit Host-Tests geprüft, **noch nicht auf Hardware getestet**. Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
+> Stand: Firmware **v0.4.2** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste; dazu gezielte Zustellung und Lua-Vorrang nach ELRS-Vorbild; v0.4.2: Adresskonflikt blau und im Lua sichtbar). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt (nachdem beide verschiedene Adressen hatten). Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
 
 | Testaufbau | RP2350-Zero auf dem Steckbrett |
 |---|---|
@@ -55,7 +55,8 @@ Zum Merken: Schaltet man an einem Port die RC-Kanäle ab, sieht ein Gerät dort 
 |---|---|
 | grün langsam | RC-Signal in Ordnung |
 | rot schnell | kein RC-Signal / Failsafe |
-| gelb Doppelblitz | Adresskonflikt oder ein Port ließ sich nicht starten |
+| blau Doppelblitz | Adresskonflikt: ein Gerät an einem Port hat dieselbe Adresse wie der Router (ab v0.4.2; Lua „Geraete“ zeigt den Port) |
+| gelb Doppelblitz | ein Port ließ sich nicht starten |
 
 Sind Rot und Grün vertauscht, im Lua-Menü „LED Farbfolge“ auf **RGB** stellen.
 
@@ -65,7 +66,7 @@ Ab v0.4.0 werden die Feld-IDs fortlaufend vergeben, sie haben sich gegenüber v0
 
 | Eintrag | Werte |
 |---|---|
-| Version | z. B. „0.4.1 Router“ |
+| Version | z. B. „0.4.2 Router“ |
 | Ordner **Ports (nach Neustart)** | |
 | ↳ Port 1 … Port 7 | Aus, 57600, 115200, 400000, **420000**, 921600 |
 | Ordner **Filter** → je Port ein Ordner | |
@@ -74,7 +75,7 @@ Ab v0.4.0 werden die Feld-IDs fortlaufend vergeben, sie haben sich gegenüber v0
 | ↳ Telemetrie hoch | **Alle**, 50/s, 20/s, 10/s, 5/s, 2/s, 1/s, Aus |
 | Ordner **Geraete** | |
 | ↳ Geraete suchen | Nein, Jetzt |
-| ↳ Port 1 … Port 7 | Anzeige, z. B. „Multiswitch@3, Sound@2“, „kein Geraet“, „aus“ |
+| ↳ Port 1 … Port 7 | Anzeige, z. B. „Multiswitch@3, Sound@2“, „kein Geraet“, „aus“, „Adresskonflikt! CRSF-Router8@14“ |
 | Modul Adresse | 0–15, Vorgabe **15** |
 | Ordner **Telemetrie** | |
 | ↳ Spannung senden | **Aus**, als RxBt, als Zellen |
@@ -102,7 +103,7 @@ Ab ELRS 4.0 haben **ESP32-Empfänger** einen zweiten seriellen Port („Serial 2
 
 ## Mehrere Router
 
-Jeder Router hat eine eigene WM-Adresse (0–15 → CRSF 0xC0 + Adresse). Mehrere Router im Modell (auch gemischt mit dem S3-Router) bekommen verschiedene Adressen, z. B. 15, 14, 13. Meldet ein Gerät weiter hinten dieselbe Adresse, blinkt die LED gelb. Router lassen sich verketten; mehr als 3 Router hintereinander sind nicht sinnvoll (je ca. 0,6 ms Verzögerung).
+Jeder Router hat eine eigene WM-Adresse (0–15 → CRSF 0xC0 + Adresse). Mehrere Router im Modell (auch gemischt mit dem S3-Router) bekommen verschiedene Adressen, z. B. 15, 14, 13. Meldet ein Gerät weiter hinten dieselbe Adresse, blinkt die LED blau, und im Lua-Ordner „Geraete“ steht beim Port „Adresskonflikt!“. Nach dem Umstellen der Adresse „Geraete suchen“ → „Jetzt“ (oder Neustart), dann ist die Meldung weg. Typischer Fall: zwei Router mit derselben Adresse, dann zeigt der Sender keinen von beiden richtig an. Router lassen sich verketten; mehr als 3 Router hintereinander sind nicht sinnvoll (je ca. 0,6 ms Verzögerung).
 
 ## Anschlüsse (Kurzfassung)
 

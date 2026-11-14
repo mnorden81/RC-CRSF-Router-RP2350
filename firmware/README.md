@@ -50,7 +50,7 @@ Ein halb empfangener Frame verfällt nach 3 ms ohne neue Bytes (alle Ports), dam
 
 `MultiRouter` merkt sich in `addrPort[256]` je Adresse den Port, von dem zuletzt ein Extended-Frame (ab 0x28) oder Heartbeat (0x0B) mit dieser Absender-Adresse kam. Nie gelernt werden 0x00, 0xC8, 0xEA, 0xEC, 0xEE, 0xEF und die eigene Adresse. Extended-Frames vom Empfänger an eine gelernte Adresse gehen nur an diesen Port. Nach oben ersetzt Telemetrie gleicher Art vom selben Port den noch wartenden Frame, und Frames 0x28–0x2D reihen sich vor der Telemetrie ein. Vorbild ist `CRSFRouter`/`RXOTAConnector` im ELRS-Empfänger 4.x.
 
-## Grenzen von v0.4.1
+## Grenzen von v0.4.2
 
 - Alle Ports nur CRSF. S.Port und GPS an den Ports sind noch nicht eingebaut.
 - Kein WLAN, keine WebUI, Bedienung nur über Lua. Updates per USB.

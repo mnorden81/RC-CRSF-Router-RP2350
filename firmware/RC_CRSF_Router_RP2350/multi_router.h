@@ -165,6 +165,8 @@ public:
     uint32_t targeted()  const { return targeted_; }   // gezielt an nur einen Port
     uint32_t replaced()  const { return upStats.replaced; }   // Telemetrie ueberschrieben
     bool     duplicateAddress() const { return dupAddr; }
+    // Port, an dem ein Geraet unsere Adresse gemeldet hat (v0.4.2)
+    bool     duplicateOnPort(uint8_t i) const { return i < MR_MAX_DOWN && (dupPorts >> i) & 1; }
     const MrPortStats& uplinkStats() const { return upStats; }
     const MrPortStats& portStats(uint8_t i) const { return downStats[i]; }
     bool     portEnabled(uint8_t i) const { return i < MR_MAX_DOWN && down[i] != nullptr; }
@@ -203,6 +205,7 @@ private:
     uint8_t  ownAddr = 0xCF;
     uint32_t fwdDown_ = 0, fwdUp_ = 0, localDropped = 0, targeted_ = 0;
     bool     dupAddr = false;
+    uint8_t  dupPorts = 0;    // Bit i = Konflikt an Port i+1
     unsigned long now_ = 0;
 };
 

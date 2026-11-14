@@ -221,6 +221,9 @@ void MultiRouter::learnDevice(uint8_t i, const uint8_t* f, uint8_t n) {
 void MultiRouter::clearDevices() {
     memset(devCount, 0, sizeof(devCount));
     memset(addrPort, 0xFF, sizeof(addrPort));
+    // Neue Suche: Konflikt neu pruefen (Adresse geaendert, Geraet abgesteckt)
+    dupAddr = false;
+    dupPorts = 0;
     devChanges++;
 }
 
@@ -284,7 +287,11 @@ void MultiRouter::fromDown(uint8_t i, const uint8_t* f, uint8_t n) {
     else if (f[2] == 0x0B && n >= 6) learnAddress(i, f[4]);   // Heartbeat: int16 MSB, Adresse im 2. Byte
     if (f[2] == CRSF_FRAMETYPE_DEVICE_INFO && n > 5) {
         // Doppelte Adresse: ein Geraet weiter hinten meldet unsere Adresse
-        if (f[4] == ownAddr) dupAddr = true;
+        if (f[4] == ownAddr) {
+            if (!dupAddr || !(dupPorts & (1u << i))) devChanges++;
+            dupAddr = true;
+            dupPorts |= (uint8_t)(1u << i);
+        }
         learnDevice(i, f, n);
         // Antwort auf unseren eigenen Ping: bleibt hier
         if (f[3] == ownAddr) return;
