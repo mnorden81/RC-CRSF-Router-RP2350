@@ -14,7 +14,7 @@
 #include <stdint.h>
 
 void ws2812Begin(uint8_t pin);
-// rgbOrder: false = GRB (Standard), true = RGB (manche Boards)
+// rgbOrder: false = GRB, true = RGB (RP2350-Zero, Vorgabe seit v0.4.5)
 void ws2812Write(uint8_t r, uint8_t g, uint8_t b, bool rgbOrder = false);
 
 #endif

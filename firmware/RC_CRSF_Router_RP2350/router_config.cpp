@@ -11,7 +11,9 @@ bool          cfgDirty   = false;
 unsigned long cfgDirtyMs = 0;
 
 static constexpr uint32_t CFG_MAGIC   = 0x38525352;   // "RSR8"
-static constexpr uint8_t  CFG_VERSION = 4;   // v0.4.0: Filter und Telemetrie-Bremse je Port
+static constexpr uint8_t  CFG_VERSION = 5;   // v0.4.0: Filter und Telemetrie-Bremse je Port
+// v0.4.5 (Version 5): gleicher Aufbau wie 4, LED-Farbfolge einmalig auf RGB
+// (die WS2812 des RP2350-Zero erwartet RGB, mit GRB war Gruen rot)
 // v0.3.0 (Version 3): wird beim ersten Start uebernommen, nichts geht verloren
 static constexpr size_t   CFG_EEPROM  = 256;
 
@@ -42,7 +44,7 @@ void cfgDefaults() {
     cfg.voltMode = VOLT_OFF;
     cfg.voltCorr = 0;
     cfg.tempSend = 0;
-    cfg.ledRgb   = 0;
+    cfg.ledRgb   = 1;   // v0.4.5: RGB (RP2350-Zero)
     for (uint8_t i = 0; i < MR_MAX_DOWN; i++) {
         cfg.portRc[i]   = 1;
         cfg.portLs[i]   = 1;
@@ -76,7 +78,7 @@ void cfgFromV3(const uint8_t* raw, size_t n) {
     cfg.voltMode = o.voltMode;
     cfg.voltCorr = o.voltCorr;
     cfg.tempSend = o.tempSend;
-    cfg.ledRgb   = o.ledRgb;
+    cfg.ledRgb   = 1;   // v0.4.5: RGB (RP2350-Zero), alte Einstellung war meist GRB
     cfgSanitize();
 }
 
@@ -97,6 +99,14 @@ void cfgLoad() {
         b.sum == checksum(b.c)) {
         cfg = b.c;
         cfgSanitize();
+        return;
+    }
+    // Version 4 (v0.4.0-v0.4.4): alles uebernehmen, nur LED auf RGB
+    if (b.magic == CFG_MAGIC && b.version == 4 && b.size == sizeof(RouterConfig) &&
+        b.sum == checksum(b.c)) {
+        cfg = b.c;
+        cfg.ledRgb = 1;
+        cfgSave();
         return;
     }
     CfgBlockT<RouterConfigV3> o;

@@ -45,7 +45,7 @@
    blau Doppelblitz   Adresskonflikt: ein Geraet an einem Port hat dieselbe
                       Adresse (Lua "Geraete" zeigt den Port)
    gelb Doppelblitz   ein Port liess sich nicht starten
-   Rot und Gruen vertauscht? Lua "LED Farbfolge" auf RGB stellen.
+   Vorgabe RGB (RP2350-Zero). Rot und Gruen vertauscht? Lua "LED Farbfolge".
 
    ── Telemetrie (beides Vorgabe aus) ───────────────────────────────────
    Spannung (Spannungsteiler an GP26) als RxBt oder Zellen-Wert,
@@ -70,9 +70,9 @@
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
 #define FW_MINOR 4
-#define FW_PATCH 4
-static const char*   FW_VERSION       = "0.4.4";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 44
+#define FW_PATCH 5
+static const char*   FW_VERSION       = "0.4.5";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 45
 #if defined(VARIANTE_ROUTER)
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
@@ -92,6 +92,10 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 //         Heartbeat) mit gezielter Zustellung nach unten, Telemetrie nach
 //         oben ueberschreiben statt verwerfen, Lua nach oben mit Vorrang.
 //         Lua-Menue und Einstellungen unveraendert.
+// v0.4.5: Status-LED-Fix: WS2812-Bitschleife im RAM statt im Flash (vorher
+//         wurde "aus" als gelb/weiss gelesen, LED wechselte gelb/rot statt
+//         gruen zu blinken). LED-Farbfolge Vorgabe RGB (RP2350-Zero), alte
+//         Einstellungen werden einmalig auf RGB umgestellt, Rest bleibt.
 // v0.4.4: Status-LED einheitlich mit allen Modulen (RC_Common 1.4.0,
 //         statusLedLook): kein Signal = rot Aufblitzen (vorher rot schnell),
 //         rot schnell = Frames, aber Failsafe / kein RC-Link.
