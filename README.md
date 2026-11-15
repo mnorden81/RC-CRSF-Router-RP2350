@@ -9,7 +9,7 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 | **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
 | **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | keine, nur für das Steckbrett |
 
-> Stand: Firmware **v0.4.4** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste; dazu gezielte Zustellung und Lua-Vorrang nach ELRS-Vorbild; v0.4.2: Adresskonflikt blau und im Lua sichtbar; v0.4.3: Lua-Fix für lange Auswahlfelder wie „Spannung Korrektur“; v0.4.4: Status-LED wie alle Module, RC_Common 1.4.0). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt (nachdem beide verschiedene Adressen hatten). Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
+> Stand: Firmware **v0.4.5** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste; dazu gezielte Zustellung und Lua-Vorrang nach ELRS-Vorbild; v0.4.2: Adresskonflikt blau und im Lua sichtbar; v0.4.3: Lua-Fix für lange Auswahlfelder wie „Spannung Korrektur“; v0.4.4: Status-LED wie alle Module, RC_Common 1.4.0; v0.4.5: LED-Fix, kein Gelb/Rot-Wechsel mehr, Vorgabe RGB). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt (nachdem beide verschiedene Adressen hatten). Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
 
 | Testaufbau | RP2350-Zero auf dem Steckbrett |
 |---|---|
@@ -61,7 +61,7 @@ Gleiches Schema in allen Modulen (seit v0.4.4 / RC_Common 1.4.0):
 | blau Doppelblitz | Adresskonflikt: ein Gerät an einem Port hat dieselbe Adresse wie der Router (Lua „Geraete“ zeigt den Port) |
 | gelb Doppelblitz | ein Port ließ sich nicht starten |
 
-Sind Rot und Grün vertauscht, im Lua-Menü „LED Farbfolge“ auf **RGB** stellen.
+Seit v0.4.5 ist **RGB** die Vorgabe (passt zum RP2350-Zero; ältere Einstellungen werden beim ersten Start einmal umgestellt). Sind Rot und Grün trotzdem vertauscht, im Lua-Menü „LED Farbfolge“ auf GRB stellen.
 
 ## Lua-Menü (ELRS Lua / TBS Agent)
 
