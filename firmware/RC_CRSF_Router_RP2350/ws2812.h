@@ -17,4 +17,7 @@ void ws2812Begin(uint8_t pin);
 // rgbOrder: false = GRB, true = RGB (RP2350-Zero, Vorgabe seit v0.4.5)
 void ws2812Write(uint8_t r, uint8_t g, uint8_t b, bool rgbOrder = false);
 
+// true = genaue Zeitmessung ueber den Zyklenzaehler (v0.4.6)
+bool ws2812CycleCounter();
+
 #endif
