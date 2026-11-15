@@ -66,13 +66,15 @@
 #include "multi_router.h"
 #include "router_config.h"
 #include "ws2812.h"
+#include <hardware/watchdog.h>
+#include <hardware/structs/powman.h>
 
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
 #define FW_MINOR 4
-#define FW_PATCH 5
-static const char*   FW_VERSION       = "0.4.5";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 45
+#define FW_PATCH 6
+static const char*   FW_VERSION       = "0.4.6";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 46
 #if defined(VARIANTE_ROUTER)
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
@@ -92,6 +94,10 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 //         Heartbeat) mit gezielter Zustellung nach unten, Telemetrie nach
 //         oben ueberschreiben statt verwerfen, Lua nach oben mit Vorrang.
 //         Lua-Menue und Einstellungen unveraendert.
+// v0.4.6: WS2812 mit Zyklenzaehler (DWT CYCCNT) statt Warteschleife, keine
+//         Flash-Aufrufe mehr waehrend der Bits (v0.4.5 half auf der Hardware
+//         nicht). Fehlersuche: Statuszeile zeigt Laufzeit, Grund des letzten
+//         Starts und den LED-Zustand (Router startete alle 1-2 min neu).
 // v0.4.5: Status-LED-Fix: WS2812-Bitschleife im RAM statt im Flash (vorher
 //         wurde "aus" als gelb/weiss gelesen, LED wechselte gelb/rot statt
 //         gruen zu blinken). LED-Farbfolge Vorgabe RGB (RP2350-Zero), alte
@@ -342,6 +348,7 @@ static void buildLuaMenu() {
 
 // ======== Status-LED ==================================================
 // Zustand, Muster und Farbe aus RC_Common, Ausgabe ueber ws2812.cpp.
+static uint8_t ledModeNow = SLED_OFF;
 static void updateLed() {
     unsigned long now = millis();
     const LinkStatistics& ls = crsf.getLinkStatistics();
@@ -356,6 +363,7 @@ static void updateLed() {
     // Farben und Muster aus RC_Common 1.4.0 (gleiches Schema in allen Modulen);
     // gelber Doppelblitz heisst hier: ein Port liess sich nicht starten
     StatusLedLook look = statusLedLook(mode, router.duplicateAddress(), false);
+    ledModeNow = mode;
     static uint8_t ledMode = 0xFF;
     static unsigned long start = 0;
     if (look.pattern != ledMode) { ledMode = look.pattern; start = now; }
@@ -398,6 +406,27 @@ static void sendOwnTelemetry() {
     }
 }
 
+// ======== Grund des letzten Starts (v0.4.6, Fehlersuche) ===============
+// POWMAN CHIP_RESET (RP2350) + Watchdog. Wird in setup() einmal gelesen und
+// in jeder Statuszeile mit ausgegeben, weil die ersten Zeilen nach einem
+// Neustart beim Wiederverbinden von USB oft verloren gehen.
+static uint32_t    resetRaw = 0;
+static const char* resetText = "?";
+static void readResetReason() {
+    resetRaw = powman_hw->chip_reset;
+    if (watchdog_enable_caused_reboot())                          resetText = "Watchdog";
+    else if (watchdog_caused_reboot())                            resetText = "Software (Neustart)";
+    else if (resetRaw & POWMAN_CHIP_RESET_HAD_GLITCH_DETECT_BITS) resetText = "Spannungs-Glitch";
+    else if (resetRaw & POWMAN_CHIP_RESET_HAD_BOR_BITS)           resetText = "Unterspannung";
+    else if (resetRaw & POWMAN_CHIP_RESET_HAD_RUN_LOW_BITS)       resetText = "RUN-Pin";
+    else if (resetRaw & POWMAN_CHIP_RESET_HAD_POR_BITS)           resetText = "Einschalten";
+    else if (resetRaw & POWMAN_CHIP_RESET_HAD_DP_RESET_REQ_BITS)  resetText = "Debugger";
+    else if (resetRaw & POWMAN_CHIP_RESET_HAD_HZD_SYS_RESET_REQ_BITS) resetText = "Software (Reset-Anforderung)";
+    else                                                          resetText = "unbekannt";
+}
+
+static const char* ledText() { return statusLedText(ledModeNow, router.duplicateAddress(), false, true); }
+
 // Alle 10 s eine Statuszeile auf der USB-Konsole (Serieller Monitor, 115200)
 static void printStatus() {
     static unsigned long last = 0;
@@ -407,12 +436,14 @@ static void printStatus() {
     char ports[LUA_VIEW_BUF];
     LuaView v = {};
     luaShowPorts(0, v, ports);
-    Serial.printf("RC %s, LQ %u, runter %lu (gezielt %lu), hoch %lu (ersetzt %lu), verworfen %lu, gefiltert %lu, CRC %lu, Ports [%s], %.2f V, %.1f C\n",
+    Serial.printf("RC %s, LQ %u, runter %lu (gezielt %lu), hoch %lu (ersetzt %lu), verworfen %lu, gefiltert %lu, CRC %lu, Ports [%s], %.2f V, %.1f C, seit %lu s, Start: %s (0x%08lX), LED %s%s\n",
                   busOk ? "ok" : "fehlt", crsf.getLinkStatistics().uplinkLQ,
                   (unsigned long)router.fwdDown(), (unsigned long)router.targeted(),
                   (unsigned long)router.fwdUp(), (unsigned long)router.replaced(),
                   (unsigned long)router.dropped(), (unsigned long)router.filtered(),
-                  (unsigned long)router.crcErrors(), ports, rxVolt, chipTemp);
+                  (unsigned long)router.crcErrors(), ports, rxVolt, chipTemp,
+                  now / 1000UL, resetText, (unsigned long)resetRaw, ledText(),
+                  ws2812CycleCounter() ? "" : " (ohne Zyklenzaehler)");
 }
 
 // Geraeteliste auf der USB-Konsole, sobald sich etwas aendert
@@ -433,6 +464,7 @@ static void printDevices() {
 
 // ======== Setup / Loop =================================================
 void setup() {
+    readResetReason();
     Serial.begin(115200);   // USB-Konsole, wartet nicht auf den PC
     ws2812Begin(PIN_STATUS_LED);
     analogReadResolution(12);
@@ -445,8 +477,9 @@ void setup() {
     router.setOwnAddress(ownAddr());
 
     buildLuaMenu();
-    Serial.printf("%s %s (RP2350, Variante %s, %d Ports), Adresse 0x%02X, Lua %u Felder\n",
-                  DEVICE_NAME, FW_VERSION, VARIANTE_NAME, PORT_COUNT, ownAddr(), (unsigned)luaMenu.size());
+    Serial.printf("%s %s (RP2350, Variante %s, %d Ports), Adresse 0x%02X, Lua %u Felder, Start: %s (0x%08lX)\n",
+                  DEVICE_NAME, FW_VERSION, VARIANTE_NAME, PORT_COUNT, ownAddr(), (unsigned)luaMenu.size(),
+                  resetText, (unsigned long)resetRaw);
 }
 
 void loop() {
