@@ -10,6 +10,7 @@
 #include <hardware/timer.h>
 
 static uint8_t wsPin = 0xFF;
+static void wsCycInit();   // v0.4.6, siehe unten
 
 void ws2812Begin(uint8_t pin) {
     wsPin = pin;
