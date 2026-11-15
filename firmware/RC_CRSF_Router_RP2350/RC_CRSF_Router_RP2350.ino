@@ -38,8 +38,10 @@
    Meldet ein Geraet weiter hinten dieselbe Adresse, blinkt die LED blau.
 
    ── Status-LED (WS2812, GP16) ─────────────────────────────────────────
+   (gleiches Schema in allen Modulen, RC_Common 1.4.0)
    gruen langsam      RC-Signal in Ordnung
-   rot schnell        kein RC-Signal / Failsafe
+   rot schnell        Frames kommen, aber Failsafe / kein RC-Link
+   rot Aufblitzen     kein Signal am Eingang (kurz alle 1 s)
    blau Doppelblitz   Adresskonflikt: ein Geraet an einem Port hat dieselbe
                       Adresse (Lua "Geraete" zeigt den Port)
    gelb Doppelblitz   ein Port liess sich nicht starten
@@ -68,9 +70,9 @@
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
 #define FW_MINOR 4
-#define FW_PATCH 3
-static const char*   FW_VERSION       = "0.4.3";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 43
+#define FW_PATCH 4
+static const char*   FW_VERSION       = "0.4.4";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 44
 #if defined(VARIANTE_ROUTER)
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
@@ -90,6 +92,9 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 //         Heartbeat) mit gezielter Zustellung nach unten, Telemetrie nach
 //         oben ueberschreiben statt verwerfen, Lua nach oben mit Vorrang.
 //         Lua-Menue und Einstellungen unveraendert.
+// v0.4.4: Status-LED einheitlich mit allen Modulen (RC_Common 1.4.0,
+//         statusLedLook): kein Signal = rot Aufblitzen (vorher rot schnell),
+//         rot schnell = Frames, aber Failsafe / kein RC-Link.
 // v0.4.3: RC_Common-Auszug auf 1.3.0 (unveraendert, keine eigenen Anpassungen
 //         mehr): lange Lua-Auswahlfelder (z. B. "Spannung Korrektur") kommen
 //         Chunk fuer Chunk wie vom Sender angefragt, vorher fehlten sie im
@@ -331,8 +336,8 @@ static void buildLuaMenu() {
     if (id - 1 != LUA_COUNT) Serial.printf("Lua: %u Felder statt %u!\n", (unsigned)(id - 1), (unsigned)LUA_COUNT);
 }
 
-// ======== Status-LED (Farben) =========================================
-// Muster aus RC_Common (statusLedMode/statusLedOn), Farbe hier im Projekt.
+// ======== Status-LED ==================================================
+// Zustand, Muster und Farbe aus RC_Common, Ausgabe ueber ws2812.cpp.
 static void updateLed() {
     unsigned long now = millis();
     const LinkStatistics& ls = crsf.getLinkStatistics();
@@ -344,16 +349,14 @@ static void updateLed() {
     in.linkStatsMs   = ls.lastUpdate;
     in.uplinkLQ      = ls.uplinkLQ;
     uint8_t mode = statusLedMode(in, now);
-    if (mode == SLED_OFF) mode = SLED_FAST;   // kein Signal: rot schnell statt dunkel
+    // Farben und Muster aus RC_Common 1.4.0 (gleiches Schema in allen Modulen);
+    // gelber Doppelblitz heisst hier: ein Port liess sich nicht starten
+    StatusLedLook look = statusLedLook(mode, router.duplicateAddress(), false);
     static uint8_t ledMode = 0xFF;
     static unsigned long start = 0;
-    if (mode != ledMode) { ledMode = mode; start = now; }
-    uint8_t r = 0, g = 0, b = 0;
-    if (mode == SLED_DOUBLE && router.duplicateAddress()) b = 60;   // blau: Adresskonflikt
-    else if (mode == SLED_DOUBLE) { r = 40; g = 28; } // gelb: Port-Fehler
-    else if (mode == SLED_FAST) { r = 40; }           // rot
-    else                        { g = 40; }           // gruen
-    bool on = statusLedOn(mode, now - start);
+    if (look.pattern != ledMode) { ledMode = look.pattern; start = now; }
+    uint8_t r = look.r, g = look.g, b = look.b;
+    bool on = statusLedOn(look.pattern, now - start);
     uint32_t rgb = on ? ((uint32_t)r << 16 | (uint32_t)g << 8 | b) : 0;
     static uint32_t lastRgb = 0xFFFFFFFF;
     static uint8_t  lastOrder = 0xFF;

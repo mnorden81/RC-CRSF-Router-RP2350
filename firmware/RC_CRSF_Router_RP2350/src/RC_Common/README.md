@@ -1,6 +1,6 @@
 # RC_Common (Auszug für den RP2350)
 
-Unveränderter Auszug aus **RC_Common 1.3.0** (CRSF_ESP32 1.1.1). Nur die Teile, die ohne ESP32 laufen:
+Unveränderter Auszug aus **RC_Common 1.4.0** (CRSF_ESP32 1.1.1). Nur die Teile, die ohne ESP32 laufen:
 
 | Datei | Inhalt |
 |---|---|

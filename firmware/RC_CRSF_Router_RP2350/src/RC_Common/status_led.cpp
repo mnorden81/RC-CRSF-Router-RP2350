@@ -18,34 +18,95 @@ uint8_t statusLedMode(const StatusLedInput& in, unsigned long now) {
     return in.sbusFailsafe ? SLED_FAST : SLED_SLOW;
 }
 
-bool statusLedOn(uint8_t mode, unsigned long t) {
-    switch (mode) {
+bool statusLedOn(uint8_t pattern, unsigned long t) {
+    switch (pattern) {
         case SLED_SLOW:   return (t % 1000) < 500;              // 500/500 ms
         case SLED_FAST:   return (t % 200) < 100;               // 100/100 ms
         case SLED_DOUBLE: { unsigned long p = t % 1000;         // 2x 100 ms, Pause
                            return p < 100 || (p >= 250 && p < 350); }
+        case SLED_BLIP:   return (t % 1000) < 100;              // 100/900 ms
         default:         return false;
     }
 }
 
-#if defined(ARDUINO) && defined(ESP32)   // nur ESP32 (RP2350-Auszug nutzt den Rest, seit 1.3.0)
+StatusLedLook statusLedLook(uint8_t mode, bool dupAddress, bool wifiOn) {
+    StatusLedLook l = {SLED_SLOW, 0, 40, 0};                    // gruen langsam
+    switch (mode) {
+        case SLED_DOUBLE:
+            l.pattern = SLED_DOUBLE;
+            if (dupAddress) { l.r = 0;  l.g = 0;  l.b = 60; }    // blau
+            else            { l.r = 40; l.g = 28; l.b = 0;  }    // gelb
+            return l;                                            // Fehler: ohne WLAN-Farbe
+        case SLED_FAST: l.pattern = SLED_FAST; l.r = 40; l.g = 0; break;   // rot schnell
+        case SLED_OFF:  l.pattern = SLED_BLIP; l.r = 40; l.g = 0; break;   // rot Aufblitzen
+        default: break;
+    }
+    if (wifiOn) { l.r = 24; l.g = 0; l.b = 40; }                 // violett
+    return l;
+}
+
+bool statusLedBootOn(unsigned long t) { return (t / LED_BOOT_BLINK_MS) % 2 == 0; }
+
+const char* statusLedText(uint8_t mode, bool dupAddress, bool wifiOn, bool rgb) {
+    if (!rgb) {
+        switch (mode) {
+            case SLED_SLOW:   return "langsam: RC-Signal OK";
+            case SLED_FAST:   return "schnell: Failsafe / kein RC-Link";
+            case SLED_DOUBLE: return dupAddress ? "Doppelblitz: Adresskonflikt" : "Doppelblitz: Konfigurationsfehler";
+            default:          return "aus: kein Signal";
+        }
+    }
+    switch (mode) {
+        case SLED_DOUBLE: return dupAddress ? "blau Doppelblitz: Adresskonflikt"
+                                            : "gelb Doppelblitz: Konfigurationsfehler";
+        case SLED_SLOW:   return wifiOn ? "violett langsam: RC-Signal OK, WLAN an"
+                                        : "gruen langsam: RC-Signal OK";
+        case SLED_FAST:   return wifiOn ? "violett schnell: Failsafe / kein RC-Link, WLAN an"
+                                        : "rot schnell: Failsafe / kein RC-Link";
+        default:          return wifiOn ? "violett Aufblitzen: kein Signal, WLAN an"
+                                        : "rot Aufblitzen: kein Signal";
+    }
+}
+
+#if defined(ARDUINO) && defined(ESP32)   // nur ESP32 (RP2350 nutzt den Rest)
+// Farbwerte gelten fuer Helligkeit 40, auf die eingestellte umrechnen
+static uint8_t scale(uint8_t v, uint8_t bright) {
+    uint16_t x = (uint16_t)v * bright / 40;
+    return x > 255 ? 255 : (uint8_t)x;
+}
+
 void StatusLed::begin(int pin, bool ws2812, uint8_t brightness, bool activeHigh) {
     pin_ = pin; ws_ = ws2812; bright_ = brightness; activeHigh_ = activeHigh;
     if (pin_ < 0) return;
     if (!ws_) pinMode(pin_, OUTPUT);
-    write(false);
+    writeRgb(0, 0, 0);
 }
 
-void StatusLed::write(bool on) {
-    if (pin_ < 0) return;
-    if (ws_) neopixelWrite(pin_, 0, on ? bright_ : 0, 0);   // gruen
-    else     digitalWrite(pin_, (on == activeHigh_) ? HIGH : LOW);
+void StatusLed::setRgbOrder(bool rgb) {
+    if (rgb == rgbOrder_) return;
+    rgbOrder_ = rgb;
+    last_ = 0xFFFFFFFF;   // beim naechsten update() neu schreiben
 }
 
-void StatusLed::update(uint8_t mode, unsigned long now) {
+void StatusLed::writeRgb(uint8_t r, uint8_t g, uint8_t b) {
     if (pin_ < 0) return;
-    if (mode != mode_) { mode_ = mode; start_ = now; }
-    bool on = statusLedOn(mode_, now - start_);
-    if (on != on_) { on_ = on; write(on); }
+    uint32_t c = (uint32_t)r << 16 | (uint32_t)g << 8 | b;
+    if (c == last_) return;
+    last_ = c;
+    if (!ws_) { digitalWrite(pin_, ((c != 0) == activeHigh_) ? HIGH : LOW); return; }
+    r = scale(r, bright_); g = scale(g, bright_); b = scale(b, bright_);
+    // neopixelWrite(pin, r, g, b) sendet GRB; eine RGB-LED bekommt Rot/Gruen getauscht
+    if (rgbOrder_) neopixelWrite(pin_, g, r, b);
+    else           neopixelWrite(pin_, r, g, b);
+}
+
+void StatusLed::update(uint8_t mode, unsigned long now, bool dupAddress, bool wifiOn) {
+    if (pin_ < 0) return;
+    uint8_t pattern = mode;
+    uint8_t r = 0, g = 40, b = 0;
+    if (ws_) { StatusLedLook l = statusLedLook(mode, dupAddress, wifiOn); pattern = l.pattern; r = l.r; g = l.g; b = l.b; }
+    if (pattern != mode_) { mode_ = pattern; start_ = now; }
+    if (statusLedOn(pattern, now - start_)) writeRgb(r, g, b);
+    else                                     writeRgb(0, 0, 0);
 }
 #endif
