@@ -72,9 +72,9 @@
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
 #define FW_MINOR 4
-#define FW_PATCH 6
-static const char*   FW_VERSION       = "0.4.6";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 46
+#define FW_PATCH 7
+static const char*   FW_VERSION       = "0.4.7";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 47
 #if defined(VARIANTE_ROUTER)
 static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
@@ -94,6 +94,10 @@ static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 //         Heartbeat) mit gezielter Zustellung nach unten, Telemetrie nach
 //         oben ueberschreiben statt verwerfen, Lua nach oben mit Vorrang.
 //         Lua-Menue und Einstellungen unveraendert.
+// v0.4.7: Lua "LED-Test" (feste Farbe) und "LED Variante" (4 Ausgabe-
+//         Varianten, nicht gespeichert) zur Fehlersuche: auf dem RP2350-Zero
+//         liest die LED das erste Bit immer als 1 (gruen -> gelb, aus -> rot).
+//         Statuszeile zeigt die Variante.
 // v0.4.6: WS2812 mit Zyklenzaehler (DWT CYCCNT) statt Warteschleife, keine
 //         Flash-Aufrufe mehr waehrend der Bits (v0.4.5 half auf der Hardware
 //         nicht). Fehlersuche: Statuszeile zeigt Laufzeit, Grund des letzten
@@ -234,8 +238,9 @@ static void portDevicesText(uint8_t i, char* buf, size_t max) {
 //    Ordner "Telemetrie": Spannung senden, Korrektur, Spannung, Temperatur senden, Chiptemperatur
 //    Ordner "Status": Frames runter/hoch, Verworfen, Gefiltert, CRC-Fehler unten, Adresskonflikt, Ports aktiv
 //    LED Farbfolge, Neustart, Geraetename
-// Router (7 Ports): 65 Felder, Test (6 Ports): 59 Felder
-static constexpr uint8_t LUA_COUNT = 23 + 6 * PORT_COUNT;
+//    v0.4.7: LED-Test, LED Variante (am Ende, damit alle IDs bleiben)
+// Router (7 Ports): 67 Felder, Test (6 Ports): 61 Felder
+static constexpr uint8_t LUA_COUNT = 25 + 6 * PORT_COUNT;   // v0.4.7: +2 LED-Test
 static LuaItem luaItems[LUA_COUNT + 1];
 static LuaMenu luaMenu(luaItems, sizeof(luaItems) / sizeof(luaItems[0]));
 
@@ -260,6 +265,13 @@ static uint8_t luaGetVCorr(uint8_t)             { return (uint8_t)(cfg.voltCorr 
 static void    luaSetVCorr(uint8_t, uint8_t v)  { cfg.voltCorr = (int8_t)v - 5; cfgMarkDirty(); }
 static uint8_t luaGetTSend(uint8_t)             { return cfg.tempSend; }
 static void    luaSetTSend(uint8_t, uint8_t v)  { cfg.tempSend = v; cfgMarkDirty(); }
+// v0.4.7 LED-Test: feste Farbe statt Status (nicht gespeichert)
+static uint8_t ledTest = 0;      // 0 Status, 1 Aus, 2 Rot, 3 Gruen, 4 Blau, 5 Weiss
+static uint8_t ledVariant = 0;
+static uint8_t luaGetLedTest(uint8_t)            { return ledTest; }
+static void    luaSetLedTest(uint8_t, uint8_t v) { ledTest = v <= 5 ? v : 0; }
+static uint8_t luaGetLedVar(uint8_t)             { return ledVariant; }
+static void    luaSetLedVar(uint8_t, uint8_t v)  { ledVariant = v <= 3 ? v : 0; ws2812SetVariant(ledVariant); }
 static uint8_t luaGetLed(uint8_t)               { return cfg.ledRgb; }
 static void    luaSetLed(uint8_t, uint8_t v)    { cfg.ledRgb = v; cfgMarkDirty(); }
 static void luaShowVolt(uint8_t, LuaView& v, char* buf) { snprintf(buf, LUA_VIEW_BUF, "%.2f V", rxVolt); v.text = buf; }
@@ -343,12 +355,15 @@ static void buildLuaMenu() {
     m.select(id++, 0, "LED Farbfolge", "GRB;RGB", luaGetLed, luaSetLed);
     m.select(id++, 0, "Neustart", "Nein;Jetzt", luaGetRestart, luaSetRestart);
     m.info(id++, 0, "Geraetename", "")->view = luaShowName;
+    m.select(id++, 0, "LED-Test", "Status;Aus;Rot;Gruen;Blau;Weiss", luaGetLedTest, luaSetLedTest);
+    m.select(id++, 0, "LED Variante", "A Standard;B Reset lang;C 0-Bit kurz;D C+B+1.Bit", luaGetLedVar, luaSetLedVar);
     if (id - 1 != LUA_COUNT) Serial.printf("Lua: %u Felder statt %u!\n", (unsigned)(id - 1), (unsigned)LUA_COUNT);
 }
 
 // ======== Status-LED ==================================================
 // Zustand, Muster und Farbe aus RC_Common, Ausgabe ueber ws2812.cpp.
 static uint8_t ledModeNow = SLED_OFF;
+static bool    lastRgbForce = false;   // v0.4.7: nach Variantenwechsel neu schreiben
 static void updateLed() {
     unsigned long now = millis();
     const LinkStatistics& ls = crsf.getLinkStatistics();
@@ -369,10 +384,16 @@ static void updateLed() {
     if (look.pattern != ledMode) { ledMode = look.pattern; start = now; }
     uint8_t r = look.r, g = look.g, b = look.b;
     bool on = statusLedOn(look.pattern, now - start);
+    // v0.4.7: LED-Test zeigt eine feste Farbe dauerhaft
+    static const uint8_t TEST_RGB[6][3] = {{0,0,0},{0,0,0},{40,0,0},{0,40,0},{0,0,60},{30,30,30}};
+    static uint8_t lastVariant = 0xFF;
+    if (ledTest) { r = TEST_RGB[ledTest][0]; g = TEST_RGB[ledTest][1]; b = TEST_RGB[ledTest][2]; on = true; }
+    if (ledVariant != lastVariant) { lastVariant = ledVariant; lastRgbForce = true; }
     uint32_t rgb = on ? ((uint32_t)r << 16 | (uint32_t)g << 8 | b) : 0;
     static uint32_t lastRgb = 0xFFFFFFFF;
     static uint8_t  lastOrder = 0xFF;
-    if (rgb != lastRgb || cfg.ledRgb != lastOrder) {
+    if (rgb != lastRgb || cfg.ledRgb != lastOrder || lastRgbForce) {
+        lastRgbForce = false;
         ws2812Write(r * on, g * on, b * on, cfg.ledRgb);
         lastRgb = rgb; lastOrder = cfg.ledRgb;
     }
@@ -425,7 +446,10 @@ static void readResetReason() {
     else                                                          resetText = "unbekannt";
 }
 
-static const char* ledText() { return statusLedText(ledModeNow, router.duplicateAddress(), false, true); }
+static const char* ledText() {
+    static const char* T[6] = {"", "Test: aus", "Test: rot", "Test: gruen", "Test: blau", "Test: weiss"};
+    return ledTest ? T[ledTest] : statusLedText(ledModeNow, router.duplicateAddress(), false, true);
+}
 
 // Alle 10 s eine Statuszeile auf der USB-Konsole (Serieller Monitor, 115200)
 static void printStatus() {
@@ -436,13 +460,13 @@ static void printStatus() {
     char ports[LUA_VIEW_BUF];
     LuaView v = {};
     luaShowPorts(0, v, ports);
-    Serial.printf("RC %s, LQ %u, runter %lu (gezielt %lu), hoch %lu (ersetzt %lu), verworfen %lu, gefiltert %lu, CRC %lu, Ports [%s], %.2f V, %.1f C, seit %lu s, Start: %s (0x%08lX), LED %s%s\n",
+    Serial.printf("RC %s, LQ %u, runter %lu (gezielt %lu), hoch %lu (ersetzt %lu), verworfen %lu, gefiltert %lu, CRC %lu, Ports [%s], %.2f V, %.1f C, seit %lu s, Start: %s (0x%08lX), LED %s, Variante %c%s\n",
                   busOk ? "ok" : "fehlt", crsf.getLinkStatistics().uplinkLQ,
                   (unsigned long)router.fwdDown(), (unsigned long)router.targeted(),
                   (unsigned long)router.fwdUp(), (unsigned long)router.replaced(),
                   (unsigned long)router.dropped(), (unsigned long)router.filtered(),
                   (unsigned long)router.crcErrors(), ports, rxVolt, chipTemp,
-                  now / 1000UL, resetText, (unsigned long)resetRaw, ledText(),
+                  now / 1000UL, resetText, (unsigned long)resetRaw, ledText(), 'A' + ledVariant,
                   ws2812CycleCounter() ? "" : " (ohne Zyklenzaehler)");
 }
 

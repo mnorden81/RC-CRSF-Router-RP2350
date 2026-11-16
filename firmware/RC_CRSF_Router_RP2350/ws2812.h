@@ -19,5 +19,7 @@ void ws2812Write(uint8_t r, uint8_t g, uint8_t b, bool rgbOrder = false);
 
 // true = genaue Zeitmessung ueber den Zyklenzaehler (v0.4.6)
 bool ws2812CycleCounter();
+// Ausgabe-Variante 0-3 zum Testen (v0.4.7), siehe ws2812.cpp
+void ws2812SetVariant(uint8_t v);
 
 #endif
