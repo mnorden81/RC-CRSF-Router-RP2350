@@ -9,7 +9,7 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 | **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
 | **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | keine, nur für das Steckbrett |
 
-> Stand: Firmware **v0.4.7** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste; dazu gezielte Zustellung und Lua-Vorrang nach ELRS-Vorbild; v0.4.2: Adresskonflikt blau und im Lua sichtbar; v0.4.3: Lua-Fix für lange Auswahlfelder wie „Spannung Korrektur“; v0.4.4: Status-LED wie alle Module, RC_Common 1.4.0; v0.4.5: LED-Vorgabe RGB; v0.4.6: LED-Timing per Zyklenzaehler, Statuszeile mit Laufzeit, Startgrund und LED-Zustand; v0.4.7: Lua „LED-Test“ und „LED Variante“ zur Fehlersuche). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt (nachdem beide verschiedene Adressen hatten). Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
+> Stand: Firmware **v0.4.8** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste; dazu gezielte Zustellung und Lua-Vorrang nach ELRS-Vorbild; v0.4.2: Adresskonflikt blau und im Lua sichtbar; v0.4.3: Lua-Fix für lange Auswahlfelder wie „Spannung Korrektur“; v0.4.4: Status-LED wie alle Module, RC_Common 1.4.0; v0.4.5: LED-Vorgabe RGB; v0.4.6: LED-Timing per Zyklenzähler, Startgrund in der Startzeile; v0.4.7: LED-Test zur Fehlersuche; v0.4.8: normale Firmware ohne Testpunkte). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt (nachdem beide verschiedene Adressen hatten). Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
 
 | Testaufbau | RP2350-Zero auf dem Steckbrett |
 |---|---|
@@ -93,10 +93,8 @@ Ab v0.4.0 werden die Feld-IDs fortlaufend vergeben, sie haben sich gegenüber v0
 | LED Farbfolge | GRB, **RGB** |
 | Neustart | Nein, Jetzt |
 | Geraetename | „CRSF-Router8“ bzw. „CRSF-Router8 Test“ |
-| LED-Test | **Status**, Aus, Rot, Gruen, Blau, Weiss (feste Farbe, wird nicht gespeichert) |
-| LED Variante | **A Standard**, B Reset lang, C 0-Bit kurz, D C+B+1.Bit (Timing der LED-Ausgabe, wird nicht gespeichert) |
 
-Router: 67 Felder, Test: 61 Felder (Port 7 fehlt überall). Im Sender erscheint der Router als **CRSF-Router8@15** bzw. **CRSF-Router8 Test@15** (Name@Adresse).
+Router: 65 Felder, Test: 59 Felder (Port 7 fehlt überall). Im Sender erscheint der Router als **CRSF-Router8@15** bzw. **CRSF-Router8 Test@15** (Name@Adresse).
 
 ## Brauche ich den Router überhaupt? (ELRS 4.x)
 

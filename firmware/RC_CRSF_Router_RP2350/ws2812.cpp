@@ -36,13 +36,7 @@ void ws2812Begin(uint8_t pin) {
 #define WS_CYCCNT   (*(volatile uint32_t*)0xE0001004u)
 
 static bool wsCycOk = false;
-// v0.4.7: Ausgabe-Variante zum Testen (Lua "LED Variante", nicht gespeichert)
-//   0 Standard: Reset 80 us, 0-Bit 0,35 us, 1-Bit 0,70 us
-//   1 langer Reset 300 us (WS2812B-V5 braucht > 280 us)
-//   2 kurzes 0-Bit 0,25 us, 1-Bit 0,65 us
-//   3 wie 2 + langer Reset + erstes Bit nur halb so lang
-static uint8_t wsVariant = 0;
-void ws2812SetVariant(uint8_t v) { wsVariant = v < 4 ? v : 0; }
+
 
 static void wsCycInit() {
     WS_DEMCR |= (1u << 24);        // TRCENA
@@ -54,12 +48,10 @@ static void wsCycInit() {
 }
 
 static void __not_in_flash_func(wsSendBits)(uint32_t v, uint32_t mask,
-                                            uint32_t t0h, uint32_t t1h, uint32_t tb,
-                                            bool firstShort) {
+                                            uint32_t t0h, uint32_t t1h, uint32_t tb) {
     uint32_t t = WS_CYCCNT;
     for (int i = 23; i >= 0; i--) {
         uint32_t hi = (v >> i) & 1 ? t1h : t0h;
-        if (firstShort && i == 23) hi /= 2;
         sio_hw->gpio_set = mask;
         while ((uint32_t)(WS_CYCCNT - t) < hi) {}
         sio_hw->gpio_clr = mask;
@@ -83,17 +75,16 @@ static void __not_in_flash_func(wsSendBitsLoop)(uint32_t v, uint32_t mask,
 void ws2812Write(uint8_t r, uint8_t g, uint8_t b, bool rgbOrder) {
     if (wsPin == 0xFF) return;
     uint32_t hz  = clock_get_hz(clk_sys);
-    bool     shortBits = (wsVariant == 2 || wsVariant == 3);
-    uint32_t t0h = shortBits ? hz / 4000000 : hz / 2857143;   // 0,25 / 0,35 us
-    uint32_t t1h = shortBits ? hz / 1538462 : hz / 1428571;   // 0,65 / 0,70 us
+    uint32_t t0h = hz / 2857143;   // 0,35 us
+    uint32_t t1h = hz / 1428571;   // 0,70 us
     uint32_t tb  = hz / 800000;    // 1,25 us
     uint32_t v = rgbOrder ? ((uint32_t)r << 16 | (uint32_t)g << 8 | b)
                           : ((uint32_t)g << 16 | (uint32_t)r << 8 | b);
     uint32_t mask = 1u << wsPin;
     sio_hw->gpio_clr = mask;
-    busy_wait_us_32((wsVariant == 1 || wsVariant == 3) ? 300 : 80);   // Reset (low) vor jedem Bild
+    busy_wait_us_32(80);           // sicherer Reset (> 50 us low) vor jedem Bild
     uint32_t irq = save_and_disable_interrupts();
-    if (wsCycOk) wsSendBits(v, mask, t0h, t1h, tb, wsVariant == 3);
+    if (wsCycOk) wsSendBits(v, mask, t0h, t1h, tb);
     else         wsSendBitsLoop(v, mask, t0h, t1h, tb);
     restore_interrupts(irq);
 }
@@ -103,5 +94,4 @@ bool ws2812CycleCounter() { return wsCycOk; }
 void ws2812Begin(uint8_t) {}
 void ws2812Write(uint8_t, uint8_t, uint8_t, bool) {}
 bool ws2812CycleCounter() { return false; }
-void ws2812SetVariant(uint8_t) {}
 #endif
