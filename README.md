@@ -9,7 +9,7 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 | **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
 | **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | keine, nur für das Steckbrett |
 
-> Stand: Firmware **v0.4.8** („Version 2“: Filter, Telemetrie-Bremse, Geräteliste; dazu gezielte Zustellung und Lua-Vorrang nach ELRS-Vorbild; v0.4.2: Adresskonflikt blau und im Lua sichtbar; v0.4.3: Lua-Fix für lange Auswahlfelder wie „Spannung Korrektur“; v0.4.4: Status-LED wie alle Module, RC_Common 1.4.0; v0.4.5: LED-Vorgabe RGB; v0.4.6: LED-Timing per Zyklenzähler, Startgrund in der Startzeile; v0.4.7: LED-Test zur Fehlersuche; v0.4.8: normale Firmware ohne Testpunkte). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt (nachdem beide verschiedene Adressen hatten). Erster Hardwaretest am 05.11.2026 auf dem Steckbrett (v0.2.0, nur seitliche Stiftleisten): der Sender findet den Router als „CRSF-Router8@14“ neben dem S3-Router und zwei Sound-Minis. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
+> Stand: Firmware **v0.4.8**, alle Versionen in [CHANGELOG.md](CHANGELOG.md). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt. Seit v0.4.6 läuft er stabil ohne Neustarts. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
 
 | Testaufbau | RP2350-Zero auf dem Steckbrett |
 |---|---|
@@ -19,15 +19,15 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 
 Der Router hängt an einem freien CRSF-Port des Empfängers und verteilt CRSF auf bis zu 7 Geräte (Test-Version: 6): Multiswitche (auch die Ziege-One-Module), Soundmodule, Sensoren oder weitere Router.
 
-- Vom Empfänger nach unten geht alles, außer Anfragen an die eigene Adresse. Anfragen an ein Gerät, dessen Port der Router schon kennt, gehen nur an diesen Port (ab v0.4.1).
+- Vom Empfänger nach unten geht alles, außer Anfragen an die eigene Adresse. Anfragen an ein Gerät, dessen Port der Router schon kennt, gehen nur an diesen Port.
 - Von unten nach oben geht alles (Telemetrie, Lua-Antworten, DEVICE_INFO).
 - Zwischen den Ports geht nichts, so entstehen keine Schleifen.
 - Weitergegeben werden nur vollständige Frames mit gültiger CRC, unverändert.
 - Jeder Port hat eine eigene Warteschlange und sendet nicht blockierend. Ein langsamer Port bremst die anderen nicht aus. Wird es eng, fällt zuerst ein alter RC-Frame weg, dann Telemetrie, Lua-Antworten zuletzt.
 
-### Neu in v0.4.0 („Version 2“)
+### Filter, Telemetrie-Bremse und Geräteliste
 
-Die Ideen stammen aus dem Vergleich mit dem CRSF-Switch von Wilhelm Meier (wmucpp). Ohne Änderung im Lua-Menü verhält sich der Router genau wie v0.3.0.
+Die Ideen stammen aus dem Vergleich mit dem CRSF-Switch von Wilhelm Meier (wmucpp). In der Grundeinstellung leitet der Router alles weiter.
 
 | Funktion | Was sie macht | Wirkt |
 |---|---|---|
@@ -35,9 +35,9 @@ Die Ideen stammen aus dem Vergleich mit dem CRSF-Switch von Wilhelm Meier (wmucp
 | **Telemetrie-Bremse je Port** | Telemetrie von unten nach oben: alle, höchstens 50/20/10/5/2/1 Frames pro Sekunde **je Sensor-Art**, oder aus. Bei RPM, Temperatur und Zellen zählt jede Quelle einzeln. DEVICE_INFO und Lua-Antworten gehen immer hoch. | sofort |
 | **Geräteliste** | Der Router fragt 2 s und 6 s nach dem Start alle Ports per Ping ab und merkt sich die Antworten (bis 4 Geräte je Port, auch hinter einem weiteren Router). Lua-Ordner „Geräte“ zeigt sie, „Geräte suchen“ fragt neu ab. Antworten auf den eigenen Ping bleiben im Router. Die USB-Konsole listet jede Änderung. | sofort |
 
-### Neu in v0.4.1 (Ideen aus dem ELRS-Empfänger)
+### Gezielte Zustellung und Lua-Vorrang (Ideen aus dem ELRS-Empfänger)
 
-Der ELRS-Empfänger hat seit Version 4.0 selbst einen kleinen CRSF-Router (Funkstrecke, CRSF-Port und auf ESP32-Empfängern ein zweiter UART). Drei seiner Regeln hat der Router übernommen. Im Lua-Menü ändert sich nichts, die Einstellungen bleiben erhalten.
+Der ELRS-Empfänger hat seit Version 4.0 selbst einen kleinen CRSF-Router (Funkstrecke, CRSF-Port und auf ESP32-Empfängern ein zweiter UART). Drei seiner Regeln hat der Router übernommen, sie laufen ohne Einstellung.
 
 | Funktion | Was sie macht |
 |---|---|
@@ -174,6 +174,7 @@ Der serielle Monitor (115200) zeigt alle 10 s eine Statuszeile.
 | `hardware/Router/` | KiCad-Projekt der Router-Platine (geroutet, DRC ohne Fehler), nur THT-Bauteile, plus 3D-Modell `hardware/3d-modell.html` (siehe [hardware/README.md](hardware/README.md)) |
 | `hardware/gehaeuse/` | 3D-Druck-Gehäuse (STL/STEP, CadQuery-Quelle, 3D-Vorschau), siehe [hardware/gehaeuse/README.md](hardware/gehaeuse/README.md) |
 | `docs/` | Projektbeschreibung (DOCX), Fotos unter `docs/bilder/` |
+| `CHANGELOG.md` | alle Versionen mit Änderungen |
 
 ## Herkunft
 

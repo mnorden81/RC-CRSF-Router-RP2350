@@ -10,18 +10,16 @@
    verteilt CRSF auf Port 1-7 (Test: 1-6). An jedem Port: Multiswitch, Soundmodul,
    weiterer Router (Kette) oder Sensor.
      - vom Empfaenger nach unten: alles ausser Anfragen an die eigene Adresse;
-       Anfragen an ein bekanntes Geraet nur an dessen Port (ab v0.4.1)
-     - von unten nach oben: alles
+       Anfragen an ein bekanntes Geraet nur an dessen Port (Adress-Lernen)
+     - von unten nach oben: alles; neuer Telemetrie-Wert ersetzt den
+       wartenden alten, Lua-Frames vor der Telemetrie
      - zwischen den Ports: nie (keine Schleifen)
      - nur vollstaendige Frames mit gueltiger CRC, unveraendert
-   Ab v0.4.0 je Port im Lua-Menue:
-     - Filter: RC-Kanaele und LinkStats nach unten an/aus
-     - Telemetrie nach oben: alle, hoechstens 50 ... 1 Frame/s je Sensor-Art, aus
-     - Geraeteliste: wer an welchem Port haengt (Ping beim Start und auf Abruf)
-   Ab v0.4.1 (Ideen aus dem Router im ELRS-Empfaenger 4.x, ohne Lua-Aenderung):
-     - Adress-Lernen + gezielte Zustellung nach unten
-     - Telemetrie nach oben: neuer Wert ersetzt wartenden alten
-     - Lua-Frames nach oben vor der Telemetrie
+   Je Port im Lua-Menue: Filter (RC-Kanaele, LinkStats nach unten),
+   Telemetrie-Bremse nach oben (alle, 50 ... 1 Frame/s je Sensor-Art, aus)
+   und Geraeteliste (Ping beim Start und auf Abruf).
+
+   Versionsgeschichte: siehe CHANGELOG.md im Hauptordner des Repos.
 
    ── Ports (pins.h) ────────────────────────────────────────────────────
    Uplink  = Hardware-UART0 (Serial1), TX GP0 / RX GP1, fest 420000 Baud
@@ -80,48 +78,6 @@ static const char*   DEVICE_NAME      = "CRSF-Router8";
 #else
 static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
 #endif
-// v0.1.0: erste Firmware: 1 Uplink + 7 Ports, Lua-Menue, Status-LED,
-//         Spannung/Temperatur als Telemetrie, Einstellungen im Flash.
-// v0.2.0: nur seitliche Stiftleisten: 1 Uplink + 6 Ports (Port 7 entfaellt),
-//         Pins Port 4-6 neu, Lua-IDs ab Moduladresse um 1 nach vorn.
-// v0.3.0: zwei Varianten in pins.h: "Router" (7 Ports, alle Pins wie v0.1)
-//         und "Test" (6 Ports, nur seitliche Stiftleisten wie v0.2).
-// v0.4.0: "Version 2" der Funktionen: Filter je Port (RC-Kanaele,
-//         LinkStats), Telemetrie-Bremse je Port, Geraeteliste per Ping.
-//         Lua-Menue neu geordnet (neue IDs).
-//         Einstellungen aus v0.3.0 werden uebernommen.
-// v0.4.1: Ideen aus dem ELRS-Empfaenger: Adress-Lernen (Extended-Frames +
-//         Heartbeat) mit gezielter Zustellung nach unten, Telemetrie nach
-//         oben ueberschreiben statt verwerfen, Lua nach oben mit Vorrang.
-//         Lua-Menue und Einstellungen unveraendert.
-// v0.4.8: Normale Firmware: LED-Test/LED Variante wieder entfernt (Lua wie
-//         v0.4.6, 65/59 Felder), Statuszeile wieder kurz, Startgrund nur
-//         in der Startzeile. LED: Standard-Schema, RGB, Zyklenzaehler-Timing.
-//         Befund: die LED des Test-Boards ist vermutlich defekt (Rot immer
-//         an, Blau tot), neues Board folgt.
-// v0.4.7: Lua "LED-Test" (feste Farbe) und "LED Variante" (4 Ausgabe-
-//         Varianten, nicht gespeichert) zur Fehlersuche: auf dem RP2350-Zero
-//         liest die LED das erste Bit immer als 1 (gruen -> gelb, aus -> rot).
-//         Statuszeile zeigt die Variante.
-// v0.4.6: WS2812 mit Zyklenzaehler (DWT CYCCNT) statt Warteschleife, keine
-//         Flash-Aufrufe mehr waehrend der Bits (v0.4.5 half auf der Hardware
-//         nicht). Fehlersuche: Statuszeile zeigt Laufzeit, Grund des letzten
-//         Starts und den LED-Zustand (Router startete alle 1-2 min neu).
-// v0.4.5: Status-LED-Fix: WS2812-Bitschleife im RAM statt im Flash (vorher
-//         wurde "aus" als gelb/weiss gelesen, LED wechselte gelb/rot statt
-//         gruen zu blinken). LED-Farbfolge Vorgabe RGB (RP2350-Zero), alte
-//         Einstellungen werden einmalig auf RGB umgestellt, Rest bleibt.
-// v0.4.4: Status-LED einheitlich mit allen Modulen (RC_Common 1.4.0,
-//         statusLedLook): kein Signal = rot Aufblitzen (vorher rot schnell),
-//         rot schnell = Frames, aber Failsafe / kein RC-Link.
-// v0.4.3: RC_Common-Auszug auf 1.3.0 (unveraendert, keine eigenen Anpassungen
-//         mehr): lange Lua-Auswahlfelder (z. B. "Spannung Korrektur") kommen
-//         Chunk fuer Chunk wie vom Sender angefragt, vorher fehlten sie im
-//         ELRS-Lua. "Spannung Korrektur" ausgeblendet, solange "Spannung
-//         senden" auf Aus steht (CRSF hidden, Feld-IDs bleiben).
-// v0.4.2: Adresskonflikt deutlicher: LED blau statt gelb (sah auf dem
-//         RP2350-Zero gruen aus), "Adresskonflikt" beim Port in der
-//         Geraeteliste, "Geraete suchen" setzt den Konflikt zurueck.
 
 static constexpr uint32_t UPLINK_BAUD = 420000;
 static constexpr size_t   RX_FIFO     = 512;   // Software-Empfangspuffer je UART

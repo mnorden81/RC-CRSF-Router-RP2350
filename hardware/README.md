@@ -6,7 +6,7 @@ Es gibt **eine** Platine für den Router (Ordner [`Router/`](Router/)): Eingang 
 
 Die Firmware-Version **Test** (`VARIANTE_TEST`, Eingang + 6 Ports, nur die seitlichen Leisten) ist nur für den Aufbau auf dem Steckbrett gedacht. Für sie gibt es keine Platine.
 
-> Stand 11.11.2026 (abends): **Platine fertig geroutet** (von Martin in KiCad 9, beide Lagen: 144 Leiterbahn-Stücke, 6 Vias, keine Kupferflächen). DRC: 0 Fehler, 0 offene Verbindungen. ERC: 0 Fehler, nur 19 Warnungen „Symbol stimmt nicht mit Bibliothek überein“ bei den Power-Symbolen (harmlos, verschwindet mit „Symbole aus Bibliothek aktualisieren“). Vor der Bestellung noch prüfen: Footprint des RP2350-Zero am echten Board, Abmessungen von F1 im Datenblatt, und die Beschriftung auf der Unterseite (sie liegt teilweise auf Pads, der Hersteller schneidet sie dort weg). Mehr als 8 UARTs schafft der RP2350 nicht (2 Hardware-UARTs + 6 PIO-UARTs), deshalb sind 7 Ports das Maximum.
+> Stand 11.11.2026 (abends): **Platine fertig geroutet** (von PiperPilot in KiCad 9, beide Lagen: 144 Leiterbahn-Stücke, 6 Vias, keine Kupferflächen). DRC: 0 Fehler, 0 offene Verbindungen. ERC: 0 Fehler, nur 19 Warnungen „Symbol stimmt nicht mit Bibliothek überein“ bei den Power-Symbolen (harmlos, verschwindet mit „Symbole aus Bibliothek aktualisieren“). Vor der Bestellung noch prüfen: Footprint des RP2350-Zero am echten Board, Abmessungen von F1 im Datenblatt, und die Beschriftung auf der Unterseite (sie liegt teilweise auf Pads, der Hersteller schneidet sie dort weg). Mehr als 8 UARTs schafft der RP2350 nicht (2 Hardware-UARTs + 6 PIO-UARTs), deshalb sind 7 Ports das Maximum.
 
 | Oberseite | Unterseite |
 |---|---|
