@@ -2,6 +2,9 @@
 
 Die Version wird bei jeder Änderung erhöht, auch die CRSF „Parameter Version Number“ im DEVICE_INFO. Neueste Version oben.
 
+## v0.4.9
+- Firmware-Variante „Test“ (6 Ports, nur seitliche Stiftleisten) entfernt. Es gibt nur noch die Router-Firmware mit Eingang + 7 Ports (65 Lua-Felder), GitHub Actions baut nur noch `CRSF-Router8.uf2`. Die alte Test-Firmware liegt im Stand v0.4.8 unter `archiv/test-firmware-v0.4.8/`. Lua-Version zeigt nur noch die Nummer.
+
 ## v0.4.8
 - Normale Firmware: LED-Test und LED-Variante wieder entfernt (Lua wie v0.4.6, 65/59 Felder), Statuszeile wieder kurz, Startgrund nur in der Startzeile.
 - LED: Standard-Schema, RGB, Timing per Zyklenzähler.

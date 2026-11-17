@@ -1,13 +1,12 @@
 /*
    RC_CRSF_Router_RP2350 - CRSF-Verteiler mit 7 Ports (Waveshare RP2350-Zero)
-   Variante "Router" (7 Ports) oder "Test" (6 Ports): Auswahl in pins.h
    PiperPilot
 
    Grosser Bruder des RC-CRSF-Router-ESP32-S3: gleiche Regeln, gleiche
-   Lua-Bedienung, aber 7 (Test: 6) Ports statt 2 und kein WLAN.
+   Lua-Bedienung, aber 7 Ports statt 2 und kein WLAN.
 
    Der Router haengt an einem freien CRSF-Port des Empfaengers (Uplink) und
-   verteilt CRSF auf Port 1-7 (Test: 1-6). An jedem Port: Multiswitch, Soundmodul,
+   verteilt CRSF auf Port 1-7. An jedem Port: Multiswitch, Soundmodul,
    weiterer Router (Kette) oder Sensor.
      - vom Empfaenger nach unten: alles ausser Anfragen an die eigene Adresse;
        Anfragen an ein bekanntes Geraet nur an dessen Port (Adress-Lernen)
@@ -25,9 +24,7 @@
    Uplink  = Hardware-UART0 (Serial1), TX GP0 / RX GP1, fest 420000 Baud
    Port 1  = PIO-UART, TX GP2 / RX GP3
    Port 2  = Hardware-UART1 (Serial2), TX GP4 / RX GP5
-   Router:  Port 3-7 = PIO-UART: GP6/7, GP8/9, GP10/11, GP12/13, GP14/15
-   Test:    Port 3-6 = PIO-UART: GP6/7, GP8/14, GP15/27, GP28/29
-            (nur seitliche Stiftleisten, die unteren Pads GP9-13 bleiben frei)
+   Port 3-7 = PIO-UART: GP6/7, GP8/9, GP10/11, GP12/13, GP14/15
    Je Port Baudrate oder "Aus" im Lua-Menue, gilt nach einem Neustart.
 
    ── Adresse ───────────────────────────────────────────────────────────
@@ -70,33 +67,23 @@
 // Version: bei jeder Aenderung hochzaehlen (auch PARAM-Version im DEVICE_INFO)
 #define FW_MAJOR 0
 #define FW_MINOR 4
-#define FW_PATCH 8
-static const char*   FW_VERSION       = "0.4.8";
-static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 48
-#if defined(VARIANTE_ROUTER)
+#define FW_PATCH 9
+static const char*   FW_VERSION       = "0.4.9";
+static const uint8_t FW_PARAM_VERSION = FW_MAJOR * 100 + FW_MINOR * 10 + FW_PATCH;   // 49
 static const char*   DEVICE_NAME      = "CRSF-Router8";
-#else
-static const char*   DEVICE_NAME      = "CRSF-Router8 Test";
-#endif
 
 static constexpr uint32_t UPLINK_BAUD = 420000;
 static constexpr size_t   RX_FIFO     = 512;   // Software-Empfangspuffer je UART
 
-// Port 1 und 3-7 (Test: 3-6) als PIO-UART (belegen erst bei begin() State-Machines)
+// Port 1 und 3-7 als PIO-UART (belegen erst bei begin() State-Machines)
 static SerialPIO uartPio1(PIN_P1_TX, PIN_P1_RX, RX_FIFO);
 static SerialPIO uartPio3(PIN_P3_TX, PIN_P3_RX, RX_FIFO);
 static SerialPIO uartPio4(PIN_P4_TX, PIN_P4_RX, RX_FIFO);
 static SerialPIO uartPio5(PIN_P5_TX, PIN_P5_RX, RX_FIFO);
 static SerialPIO uartPio6(PIN_P6_TX, PIN_P6_RX, RX_FIFO);
-#if PORT_COUNT >= 7
 static SerialPIO uartPio7(PIN_P7_TX, PIN_P7_RX, RX_FIFO);
-#endif
 // Index = Port-1; Port 2 (Index 1) ist der Hardware-UART
-static SerialPIO* const PIO_PORTS[PORT_COUNT] = {&uartPio1, nullptr, &uartPio3, &uartPio4, &uartPio5, &uartPio6
-#if PORT_COUNT >= 7
-    , &uartPio7
-#endif
-};
+static SerialPIO* const PIO_PORTS[PORT_COUNT] = {&uartPio1, nullptr, &uartPio3, &uartPio4, &uartPio5, &uartPio6, &uartPio7};
 static_assert(PORT_COUNT <= MR_MAX_DOWN, "MR_MAX_DOWN zu klein");
 
 // Zustand je Port: 0 aus, 1 laeuft, 2 Start fehlgeschlagen
@@ -199,12 +186,12 @@ static void portDevicesText(uint8_t i, char* buf, size_t max) {
 //    Ordner "Telemetrie": Spannung senden, Korrektur, Spannung, Temperatur senden, Chiptemperatur
 //    Ordner "Status": Frames runter/hoch, Verworfen, Gefiltert, CRC-Fehler unten, Adresskonflikt, Ports aktiv
 //    LED Farbfolge, Neustart, Geraetename
-// Router (7 Ports): 65 Felder, Test (6 Ports): 59 Felder
+// 7 Ports: 65 Felder
 static constexpr uint8_t LUA_COUNT = 23 + 6 * PORT_COUNT;
 static LuaItem luaItems[LUA_COUNT + 1];
 static LuaMenu luaMenu(luaItems, sizeof(luaItems) / sizeof(luaItems[0]));
 
-static void luaShowVersion(uint8_t, LuaView& v, char* buf) { snprintf(buf, LUA_VIEW_BUF, "%s %s", FW_VERSION, VARIANTE_NAME); v.text = buf; }
+static void luaShowVersion(uint8_t, LuaView& v, char* buf) { snprintf(buf, LUA_VIEW_BUF, "%s", FW_VERSION); v.text = buf; }
 static void luaShowName(uint8_t, LuaView& v, char*)        { v.text = DEVICE_NAME; }
 
 static uint8_t luaGetPort(uint8_t a)            { return cfg.portBaud[a]; }
@@ -436,8 +423,8 @@ void setup() {
     router.setOwnAddress(ownAddr());
 
     buildLuaMenu();
-    Serial.printf("%s %s (RP2350, Variante %s, %d Ports), Adresse 0x%02X, Lua %u Felder, Start: %s (0x%08lX)\n",
-                  DEVICE_NAME, FW_VERSION, VARIANTE_NAME, PORT_COUNT, ownAddr(), (unsigned)luaMenu.size(),
+    Serial.printf("%s %s (RP2350, %d Ports), Adresse 0x%02X, Lua %u Felder, Start: %s (0x%08lX)\n",
+                  DEVICE_NAME, FW_VERSION, PORT_COUNT, ownAddr(), (unsigned)luaMenu.size(),
                   resetText, (unsigned long)resetRaw);
 }
 

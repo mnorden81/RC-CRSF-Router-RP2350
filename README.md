@@ -2,14 +2,11 @@
 
 CRSF-Verteiler für ELRS-Empfänger auf einem **Waveshare RP2350-Zero**. Der große Bruder des [RC-CRSF-Router-ESP32-S3](https://github.com/mnorden81/RC-CRSF-Router-ESP32-S3): gleiche Weiterleitungsregeln, gleiche Bedienung über das Lua-Menü, aber bis zu 7 statt 2 Ports und **kein WLAN**.
 
-Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
+| Ports | Pins am RP2350-Zero | Im Sender | Platine |
+|---|---|---|---|
+| Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
 
-| Version | Ports | Pins am RP2350-Zero | Im Sender | Platine |
-|---|---|---|---|---|
-| **Router** | Eingang + 7 Ports | alle, auch die 5 Pads an der Unterkante | `CRSF-Router8@15` | [hardware/Router](hardware/Router/) |
-| **Test** | Eingang + 6 Ports | nur die beiden seitlichen Stiftleisten | `CRSF-Router8 Test@15` | keine, nur für das Steckbrett |
-
-> Stand: Firmware **v0.4.8**, alle Versionen in [CHANGELOG.md](CHANGELOG.md). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt. Seit v0.4.6 läuft er stabil ohne Neustarts. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
+> Stand: Firmware **v0.4.9**, alle Versionen in [CHANGELOG.md](CHANGELOG.md). v0.4.1 lief am 14.11.2026 auf dem Steckbrett: Router im Sender sichtbar, ein S3-Router an Port 1 wird erkannt. Seit v0.4.6 läuft er stabil ohne Neustarts. Die Router-Platine ist seit 11.11.2026 fertig geroutet (DRC ohne Fehler), aber noch nicht bestellt.
 
 | Testaufbau | RP2350-Zero auf dem Steckbrett |
 |---|---|
@@ -17,7 +14,7 @@ Zwei Versionen, ein Sketch (Auswahl oben in `pins.h`):
 
 ## Was er macht
 
-Der Router hängt an einem freien CRSF-Port des Empfängers und verteilt CRSF auf bis zu 7 Geräte (Test-Version: 6): Multiswitche (auch die Ziege-One-Module), Soundmodule, Sensoren oder weitere Router.
+Der Router hängt an einem freien CRSF-Port des Empfängers und verteilt CRSF auf bis zu 7 Geräte: Multiswitche (auch die Ziege-One-Module), Soundmodule, Sensoren oder weitere Router.
 
 - Vom Empfänger nach unten geht alles, außer Anfragen an die eigene Adresse. Anfragen an ein Gerät, dessen Port der Router schon kennt, gehen nur an diesen Port.
 - Von unten nach oben geht alles (Telemetrie, Lua-Antworten, DEVICE_INFO).
@@ -92,9 +89,9 @@ Ab v0.4.0 werden die Feld-IDs fortlaufend vergeben, sie haben sich gegenüber v0
 | ↳ Ports aktiv | je Port: Nummer = Gerät antwortet, `.` still, `-` aus, `!` Fehler |
 | LED Farbfolge | GRB, **RGB** |
 | Neustart | Nein, Jetzt |
-| Geraetename | „CRSF-Router8“ bzw. „CRSF-Router8 Test“ |
+| Geraetename | „CRSF-Router8“ |
 
-Router: 65 Felder, Test: 59 Felder (Port 7 fehlt überall). Im Sender erscheint der Router als **CRSF-Router8@15** bzw. **CRSF-Router8 Test@15** (Name@Adresse).
+65 Felder. Im Sender erscheint der Router als **CRSF-Router8@15** (Name@Adresse).
 
 ## Brauche ich den Router überhaupt? (ELRS 4.x)
 
@@ -110,19 +107,19 @@ Jeder Router hat eine eigene WM-Adresse (0–15 → CRSF 0xC0 + Adresse). Mehrer
 
 ## Anschlüsse (Kurzfassung)
 
-| Port | Router TX | Router RX | Test TX | Test RX | Art |
-|---|---|---|---|---|---|
-| Uplink (Empfänger) | GP0 | GP1 | GP0 | GP1 | Hardware-UART, fest 420000 Baud |
-| Port 1 | GP2 | GP3 | GP2 | GP3 | PIO-UART |
-| Port 2 | GP4 | GP5 | GP4 | GP5 | Hardware-UART |
-| Port 3 | GP6 | GP7 | GP6 | GP7 | PIO-UART |
-| Port 4 | GP8 | GP9 | GP8 | GP14 | PIO-UART |
-| Port 5 | GP10 | GP11 | GP15 | GP27 | PIO-UART |
-| Port 6 | GP12 | GP13 | GP28 | GP29 | PIO-UART |
-| Port 7 | GP14 | GP15 | – | – | PIO-UART |
-| Spannung | GP26 | | GP26 | | nur mit externem Teiler 33k/10k, auf der Platine nicht vorhanden |
+| Port | TX | RX | Art |
+|---|---|---|---|
+| Uplink (Empfänger) | GP0 | GP1 | Hardware-UART, fest 420000 Baud |
+| Port 1 | GP2 | GP3 | PIO-UART |
+| Port 2 | GP4 | GP5 | Hardware-UART |
+| Port 3 | GP6 | GP7 | PIO-UART |
+| Port 4 | GP8 | GP9 | PIO-UART |
+| Port 5 | GP10 | GP11 | PIO-UART |
+| Port 6 | GP12 | GP13 | PIO-UART |
+| Port 7 | GP14 | GP15 | PIO-UART |
+| Spannung | GP26 | | nur mit externem Teiler 33k/10k, auf der Platine nicht vorhanden |
 
-Lage am Board (Oberseite, USB oben): rechte Leiste GP0–GP8, untere Kante GP9–GP13 (nur Lötpads), linke Leiste 5V, GND, 3V3, GP29, GP28, GP27, GP26, GP15, GP14. Die **Router**-Version braucht die Pads unten (5er-Stiftleiste einlöten), die **Test**-Version kommt mit den beiden seitlichen Leisten aus. Mehr als 8 UARTs (2 Hardware + 6 PIO) schafft der RP2350 nicht, deshalb sind 7 Ports das Maximum.
+Lage am Board (Oberseite, USB oben): rechte Leiste GP0–GP8, untere Kante GP9–GP13 (nur Lötpads), linke Leiste 5V, GND, 3V3, GP29, GP28, GP27, GP26, GP15, GP14. Der Router braucht auch die Pads unten (5er-Stiftleiste einlöten). Mehr als 8 UARTs (2 Hardware + 6 PIO) schafft der RP2350 nicht, deshalb sind 7 Ports das Maximum.
 
 TX des Routers an RX des Geräts und umgekehrt, GND gemeinsam. Details und Schaltplan: [hardware/README.md](hardware/README.md).
 
@@ -135,7 +132,7 @@ Der RP2350 hat kein WLAN, Updates gehen immer über USB. Am einfachsten ist Weg 
 1. Auf GitHub angemeldet sein (sonst gibt es keinen Download-Knopf).
 2. In diesem Repo oben auf **Actions** klicken, links den Workflow **Firmware bauen** wählen.
 3. Den obersten Lauf mit grünem Haken öffnen (Branch `main`).
-4. Ganz unten unter **Artifacts** **crsf-router8-rp2350-Router** herunterladen (für das Steckbrett: **crsf-router8-rp2350-Test**) und die ZIP-Datei entpacken. Darin liegt `CRSF-Router8_Router.uf2` bzw. `CRSF-Router8_Test.uf2`.
+4. Ganz unten unter **Artifacts** **crsf-router8-rp2350** herunterladen und die ZIP-Datei entpacken. Darin liegt `CRSF-Router8.uf2`.
    Steht dort nichts (Artefakte werden nach 90 Tagen gelöscht): rechts oben **Run workflow** → **Run workflow** klicken, nach ca. 3 Minuten ist ein neuer Lauf fertig.
 5. Am RP2350-Zero die Taste **BOOT** gedrückt halten und dabei das USB-C-**Datenkabel** einstecken, dann loslassen.
 6. Am PC erscheint ein neues Laufwerk **RP2350** (wie ein USB-Stick).
@@ -155,11 +152,10 @@ Der RP2350 hat kein WLAN, Updates gehen immer über USB. Am einfachsten ist Weg 
 
 1. Repo herunterladen: oben auf GitHub **Code → Download ZIP**, entpacken (oder den vorhandenen Ordner nehmen).
 2. **Datei → Öffnen** und `firmware/RC_CRSF_Router_RP2350/RC_CRSF_Router_RP2350.ino` wählen.
-3. Version wählen: oben in `pins.h` steht `#define VARIANTE_ROUTER` (Vorgabe, für die Platine). Für die Test-Version (Steckbrett) diese Zeile mit `//` auskommentieren und bei `//#define VARIANTE_TEST` die `//` entfernen.
-4. **Werkzeuge → Board → Raspberry Pi Pico/RP2040/RP2350 → Waveshare RP2350 Zero** wählen. Die übrigen Einstellungen unter Werkzeuge bleiben auf Standard.
-5. Beim **allerersten Mal**: BOOT-Taste gedrückt halten, USB einstecken, loslassen. Unter **Werkzeuge → Port** „UF2 Board“ wählen.
+3. **Werkzeuge → Board → Raspberry Pi Pico/RP2040/RP2350 → Waveshare RP2350 Zero** wählen. Die übrigen Einstellungen unter Werkzeuge bleiben auf Standard.
+4. Beim **allerersten Mal**: BOOT-Taste gedrückt halten, USB einstecken, loslassen. Unter **Werkzeuge → Port** „UF2 Board“ wählen.
    Ab dem zweiten Mal: einfach einstecken und unter **Werkzeuge → Port** den COM-Port wählen.
-6. Auf den Pfeil **Hochladen** klicken. Der Router startet danach von selbst neu.
+5. Auf den Pfeil **Hochladen** klicken. Der Router startet danach von selbst neu.
 
 **Wenn das Hochladen nicht klappt** (kein Port oder „No drive to deploy“): USB abziehen, BOOT gedrückt halten, wieder einstecken und mit Port „UF2 Board“ erneut hochladen.
 
@@ -170,6 +166,7 @@ Der serielle Monitor (115200) zeigt alle 10 s eine Statuszeile.
 | Ordner | Inhalt |
 |---|---|
 | `firmware/RC_CRSF_Router_RP2350/` | Arduino-Sketch (siehe [firmware/README.md](firmware/README.md)) |
+| `archiv/` | alte Test-Firmware v0.4.8 (6 Ports, Steckbrett), nicht mehr gepflegt |
 | `tests/` | Host-Tests des Routers (`sh tests/run_tests.sh`) |
 | `hardware/Router/` | KiCad-Projekt der Router-Platine (geroutet, DRC ohne Fehler), nur THT-Bauteile, plus 3D-Modell `hardware/3d-modell.html` (siehe [hardware/README.md](hardware/README.md)) |
 | `hardware/gehaeuse/` | 3D-Druck-Gehäuse (STL/STEP, CadQuery-Quelle, 3D-Vorschau), siehe [hardware/gehaeuse/README.md](hardware/gehaeuse/README.md) |
