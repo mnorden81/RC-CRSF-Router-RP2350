@@ -4,15 +4,9 @@
 /*
  * pins.h  -  CRSF-Router 8 (Waveshare RP2350-Zero)
  *
- * Zwei Varianten, gleicher Sketch. Genau EINE Zeile unten aktiv lassen:
- *
- *   VARIANTE_ROUTER  "Router": Eingang + 7 Ports, alle Pins (GP0-GP15).
- *                    Braucht auch die Loetpads an der unteren Kante
- *                    (GP9-GP13): dort eine 5er-Stiftleiste einloeten.
- *                    Platine: hardware/Router/
- *   VARIANTE_TEST    "Test": Eingang + 6 Ports, nur die beiden seitlichen
- *                    Stiftleisten, Pads GP9-GP13 bleiben frei. Gut fuer
- *                    Steckbrett und Probeaufbau. Platine: hardware/Test/
+ * Eingang + 7 Ports, alle Pins (GP0-GP15). Braucht auch die Loetpads an
+ * der unteren Kante (GP9-GP13): dort eine 5er-Stiftleiste einloeten.
+ * Platine: hardware/Router/
  *
  * Belegung RP2350-Zero (Oberseite, USB oben):
  *   rechte Leiste:  GP0 GP1 GP2 GP3 GP4 GP5 GP6 GP7 GP8
@@ -25,13 +19,7 @@
  * 3,3-V-Pegeln, das passt direkt.
  */
 
-#if !defined(VARIANTE_ROUTER) && !defined(VARIANTE_TEST)
-#define VARIANTE_ROUTER      // Vollversion: Eingang + 7 Ports
-//#define VARIANTE_TEST      // Testversion: Eingang + 6 Ports, nur seitliche Leisten
-#endif
-#if defined(VARIANTE_ROUTER) && defined(VARIANTE_TEST)
-#error "Nur eine Variante waehlen: VARIANTE_ROUTER oder VARIANTE_TEST"
-#endif
+#define PORT_COUNT     7
 
 // ── Uplink zum Empfaenger: Hardware-UART0 (Serial1), fest 420000 Baud ─
 #define PIN_UPLINK_TX  0
@@ -46,10 +34,6 @@
 #define PIN_P1_RX      3
 #define PIN_P3_TX      6
 #define PIN_P3_RX      7
-
-#if defined(VARIANTE_ROUTER)
-#define VARIANTE_NAME  "Router"
-#define PORT_COUNT     7
 #define PIN_P4_TX      8
 #define PIN_P4_RX      9
 #define PIN_P5_TX      10
@@ -59,18 +43,6 @@
 #define PIN_P7_TX      14
 #define PIN_P7_RX      15
 // GP27, GP28, GP29: frei (Reserve)
-#else
-#define VARIANTE_NAME  "Test"
-#define PORT_COUNT     6
-// Port 4: TX rechts unten (GP8), RX links unten (GP14)
-#define PIN_P4_TX      8
-#define PIN_P4_RX      14
-// Port 5: GP15 und GP27 (dazwischen GP26 = Spannung)
-#define PIN_P5_TX      15
-#define PIN_P5_RX      27
-#define PIN_P6_TX      28
-#define PIN_P6_RX      29
-#endif
 
 // ── Status-LED: RGB-LED (WS2812) des RP2350-Zero ─────────────────────
 // Die PIO-Einheiten gehoeren den UARTs, die LED wird deshalb per

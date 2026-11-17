@@ -10,14 +10,14 @@ Arduino-Sketch für den Waveshare RP2350-Zero, Core **arduino-pico 6.3.2** (Earl
 | `multi_router.*` | Router mit Uplink + bis zu 7 Ports: Frame-Parser, Warteschlangen, nicht blockierendes Senden, Anbindung der CRSF-Klasse; ab v0.4.0 Filter, Telemetrie-Bremse und Geräteliste je Port |
 | `router_config.*` | Einstellungen im Flash (EEPROM-Emulation, mit Prüfsumme) |
 | `ws2812.*` | RGB-LED ohne PIO (alle PIO-Einheiten sind von den UARTs belegt) |
-| `pins.h` | Pinbelegung und Auswahl der Version (`VARIANTE_ROUTER` oder `VARIANTE_TEST`) |
+| `pins.h` | Pinbelegung (Eingang + 7 Ports) |
 | `src/RC_Common/` | Auszug aus RC_Common 1.2.0 (siehe unten) |
 
 ## Wie die Teile zusammenspielen
 
 ```
 Empfänger ──UART── MultiRouter ──┬── Port 2 (Hardware-UART)
-                       │         ├── Port 1, 3…7 (PIO-UART; Test: 3…6)
+                       │         ├── Port 1, 3…7 (PIO-UART)        
                        │
                   local() Stream
                        │
@@ -57,4 +57,4 @@ Ein halb empfangener Frame verfällt nach 3 ms ohne neue Bytes (alle Ports), dam
 - Speichern einer Einstellung blockiert den Chip einige Millisekunden (Flash). Dabei können einzelne Frames verloren gehen; gespeichert wird nur nach Änderungen im Lua-Menü.
 - Keine Adressumsetzung (NAT) und kein Weiterleiten von Port zu Port: jedes Gerät braucht weiter eine eigene Adresse. (Der ELRS-Empfänger leitet zwischen seinen Ports weiter; der Router bewusst nicht, damit keine Schleifen entstehen.)
 - Kein Halbduplex: jeder Port braucht TX und RX.
-- Nicht auf Hardware getestet: PIO-Belegung der Router-Variante (12 von 12 State-Machines) und Durchsatz bei 7 aktiven Ports. Die Test-Variante (10 von 12) läuft auf dem Steckbrett (zuletzt v0.4.8).
+- Nicht auf Hardware getestet: PIO-Belegung mit allen 7 Ports (12 von 12 State-Machines) und Durchsatz bei 7 aktiven Ports.

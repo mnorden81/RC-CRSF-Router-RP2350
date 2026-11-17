@@ -1,4 +1,4 @@
-// tests/test_router.cpp - Host-Tests fuer den 7-Port-Router (Variante Router; Test nutzt 6) (ohne RP2350)
+// tests/test_router.cpp - Host-Tests fuer den 7-Port-Router (ohne RP2350)
 //   sh tests/run_tests.sh
 // Prueft die Weiterleitungsregeln, die Warteschlangen, das nicht
 // blockierende Senden und die Anbindung der CRSF-Klasse (Lua, Ping).

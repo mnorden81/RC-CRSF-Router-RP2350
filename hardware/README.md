@@ -2,9 +2,7 @@
 
 Basis ist ein **Waveshare RP2350-Zero** (ca. 23,5 × 18 mm, USB-C, RGB-LED an GP16, BOOT- und RESET-Taste), gesteckt auf eine Verteilerplatine. Jeder Teilnehmer bekommt ein 4-poliges Kabel mit GND, +V und den beiden Signalen, wie bei einem Servoverteiler.
 
-Es gibt **eine** Platine für den Router (Ordner [`Router/`](Router/)): Eingang + 7 Ports, alle Bauteile bedrahtet (THT), 38,4 × 25,5 mm, 2 Lagen. Sie nutzt alle Pins am RP2350-Zero, also beide seitlichen Leisten **und** die 5 Pads unten (GP9–GP13). Firmware-Version `VARIANTE_ROUTER` in `firmware/RC_CRSF_Router_RP2350/pins.h` (Vorgabe).
-
-Die Firmware-Version **Test** (`VARIANTE_TEST`, Eingang + 6 Ports, nur die seitlichen Leisten) ist nur für den Aufbau auf dem Steckbrett gedacht. Für sie gibt es keine Platine.
+Es gibt **eine** Platine für den Router (Ordner [`Router/`](Router/)): Eingang + 7 Ports, alle Bauteile bedrahtet (THT), 38,4 × 25,5 mm, 2 Lagen. Sie nutzt alle Pins am RP2350-Zero, also beide seitlichen Leisten **und** die 5 Pads unten (GP9–GP13).
 
 > Stand 11.11.2026 (abends): **Platine fertig geroutet** (von PiperPilot in KiCad 9, beide Lagen: 144 Leiterbahn-Stücke, 6 Vias, keine Kupferflächen). DRC: 0 Fehler, 0 offene Verbindungen. ERC: 0 Fehler, nur 19 Warnungen „Symbol stimmt nicht mit Bibliothek überein“ bei den Power-Symbolen (harmlos, verschwindet mit „Symbole aus Bibliothek aktualisieren“). Vor der Bestellung noch prüfen: Footprint des RP2350-Zero am echten Board, Abmessungen von F1 im Datenblatt, und die Beschriftung auf der Unterseite (sie liegt teilweise auf Pads, der Hersteller schneidet sie dort weg). Mehr als 8 UARTs schafft der RP2350 nicht (2 Hardware-UARTs + 6 PIO-UARTs), deshalb sind 7 Ports das Maximum.
 
@@ -77,18 +75,16 @@ Spalten von links: **T** = Router empfängt, vom TX des Geräts, **R** = Router 
 
 ## Pinbelegung RP2350-Zero
 
-Die Spalten „Test“ gelten nur für den Steckbrett-Aufbau ohne Platine.
-
-| Port | Router TX | Router RX | Test TX | Test RX |
-|---|---|---|---|---|
-| Uplink (Hardware-UART0) | GP0 | GP1 | GP0 | GP1 |
-| Port 1 (PIO) | GP2 | GP3 | GP2 | GP3 |
-| Port 2 (Hardware-UART1) | GP4 | GP5 | GP4 | GP5 |
-| Port 3 (PIO) | GP6 | GP7 | GP6 | GP7 |
-| Port 4 (PIO) | GP8 | GP9 | GP8 | GP14 |
-| Port 5 (PIO) | GP10 | GP11 | GP15 | GP27 |
-| Port 6 (PIO) | GP12 | GP13 | GP28 | GP29 |
-| Port 7 (PIO) | GP14 | GP15 | – | – |
-| frei | GP26–GP29 | | GP26, GP9–GP13 (Pads) | |
+| Port | TX | RX |
+|---|---|---|
+| Uplink (Hardware-UART0) | GP0 | GP1 |
+| Port 1 (PIO) | GP2 | GP3 |
+| Port 2 (Hardware-UART1) | GP4 | GP5 |
+| Port 3 (PIO) | GP6 | GP7 |
+| Port 4 (PIO) | GP8 | GP9 |
+| Port 5 (PIO) | GP10 | GP11 |
+| Port 6 (PIO) | GP12 | GP13 |
+| Port 7 (PIO) | GP14 | GP15 |
+| frei | GP26–GP29 | |
 
 Lage am Board (Oberseite, USB oben): rechte Leiste GP0–GP8, untere Kante GP9–GP13 (nur Pads), linke Leiste 5V, GND, 3V3, GP29, GP28, GP27, GP26, GP15, GP14.

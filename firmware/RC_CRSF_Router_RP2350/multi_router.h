@@ -39,7 +39,7 @@
 
 #include "src/RC_Common/CRSF_ESP32/crsf_esp32.h"
 
-#define MR_MAX_DOWN      7     // Ports nach unten (Platz; Variante Test nutzt 6)
+#define MR_MAX_DOWN      7     // Ports nach unten
 #define MR_FRAME         64    // groesster CRSF-Frame (wie CRSF_PACKET_SIZE)
 #define MR_QUEUE_DOWN    8     // Frames je Port nach unten
 #define MR_QUEUE_UP      16    // Frames zum Empfaenger (alle Ports + eigene)
