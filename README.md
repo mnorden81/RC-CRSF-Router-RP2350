@@ -12,6 +12,12 @@ CRSF-Verteiler für ELRS-Empfänger auf einem **Waveshare RP2350-Zero**. Der gro
 |---|---|
 | ![Testaufbau: TX16S zeigt CRSF-Router8@14, CRSF-Router@15 und zwei Sound-Minis](docs/bilder/testaufbau-sender.jpg) | ![RP2350-Zero mit Stiftleisten auf dem Steckbrett](docs/bilder/rp2350-zero-steckbrett.jpg) |
 
+## Projektvideo
+
+[![Projektvideo: CRSF-Ökosystem für RC-Modelle (zum Abspielen anklicken)](https://github.com/mnorden81/RC-CRSF-Router-ESP32-S3/raw/main/docs/video/projektvideo-vorschau.jpg)](https://github.com/mnorden81/RC-CRSF-Router-ESP32-S3/blob/main/docs/video/CRSF-Oekosystem_Projektvorstellung.mp4)
+
+Rund zwei Minuten Überblick über das ganze CRSF-Ökosystem: CRSF-Router, Multiswitch, Soundmodule, der ESP-NOW-CRSF-Link mit Funk in den Modulen und die Prüfstände für WebUI und Lua-Menü. Bild anklicken, dann startet das Video auf GitHub. Das Video liegt im Repo [RC-CRSF-Router-ESP32-S3](https://github.com/mnorden81/RC-CRSF-Router-ESP32-S3/tree/main/docs/video), weil es alle Module gemeinsam zeigt.
+
 ## Was er macht
 
 Der Router hängt an einem freien CRSF-Port des Empfängers und verteilt CRSF auf bis zu 7 Geräte: Multiswitche (auch die Ziege-One-Module), Soundmodule, Sensoren oder weitere Router.
