@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@TITLE@</title>
+<!-- Erzeugt von pruefstand/build.py aus dem Firmware-Code. Nicht von Hand aendern. -->
+<style>
+:root {
+  --bg: #eef2ee; --panel: #ffffff; --ink: #18231d; --sub: #5b6a61; --line: #d3ddd5;
+  --mask: #1d5a3c; --copper: #a8642a; --ok: #1f7a46; --warn: #a86a00; --bad: #b03a2e;
+  --code-bg: #f4f7f4; --lcd: #c9d6c0; --lcd-ink: #1b2618; --lcd-sel: #1b2618; --lcd-sel-ink: #c9d6c0;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1612; --panel: #16201a; --ink: #e3ebe5; --sub: #93a39a; --line: #2a3a31;
+    --mask: #4fae7c; --copper: #d99257; --ok: #5cc68a; --warn: #e0a640; --bad: #e57368; --code-bg: #111a15;
+    --lcd: #22301f; --lcd-ink: #cfe3c4; --lcd-sel: #cfe3c4; --lcd-sel-ink: #22301f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1612; --panel: #16201a; --ink: #e3ebe5; --sub: #93a39a; --line: #2a3a31;
+  --mask: #4fae7c; --copper: #d99257; --ok: #5cc68a; --warn: #e0a640; --bad: #e57368; --code-bg: #111a15;
+  --lcd: #22301f; --lcd-ink: #cfe3c4; --lcd-sel: #cfe3c4; --lcd-sel-ink: #22301f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body);
+  padding: 18px max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left)); }
+.wrap { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 26px; margin: 0; line-height: 1.2; }
+.lead { color: var(--sub); margin: 4px 0 0; max-width: 80ch; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab { font: 600 14px/1.2 var(--font-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 12px; cursor: pointer; text-align: left; }
+.tab small { display: block; font: 400 12px var(--font-mono); color: var(--sub); margin-top: 2px; }
+.tab[aria-selected="true"] { border-color: var(--mask); box-shadow: inset 0 -3px 0 var(--mask); }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+@media (max-width: 960px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.card > h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--copper); margin: 0; padding: 10px 14px 0; }
+.pad { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.screen-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line);
+  font: 12px var(--font-mono); color: var(--sub); flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.dot.busy { background: var(--warn); }
+.screen-bar .sp { flex: 1; }
+.screen { position: relative; overflow: hidden; }
+iframe { display: block; width: 100%; height: 860px; border: 0; background: #fff; }
+.boot { position: absolute; inset: 37px 0 0 0; display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--panel) 88%, transparent); font-weight: 600; }
+aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+button.btn { font: 600 14px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+button.btn.primary { background: var(--mask); color: #fff; border-color: var(--mask); }
+:root[data-theme="dark"] button.btn.primary { color: #0f1612; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.btn.primary { color: #0f1612; } }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+/* Sender-Display */
+.lcd { background: var(--lcd); color: var(--lcd-ink); font: 13px/1.35 var(--font-mono); border-radius: 6px;
+  margin: 10px 14px 0; padding: 6px 0; min-height: 300px; max-height: 520px; overflow-y: auto; border: 3px solid #2b3328; }
+.lcd .hd { display: flex; justify-content: space-between; gap: 8px; padding: 2px 8px 5px; border-bottom: 1px solid currentColor; margin-bottom: 3px; font-weight: 700; }
+.lcd .it { display: flex; justify-content: space-between; gap: 10px; padding: 2px 8px; cursor: pointer; width: 100%;
+  background: none; border: 0; color: inherit; font: inherit; text-align: left; }
+.lcd .it:hover, .lcd .it.sel { background: var(--lcd-sel); color: var(--lcd-sel-ink); }
+.lcd .it .v { text-align: right; overflow-wrap: anywhere; }
+.lcd .it.ro { cursor: default; }
+.lcd .it.ro:hover { background: none; color: inherit; }
+.lcd .it.hid { opacity: .45; }
+.lcd .ed { padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px dashed currentColor; }
+.lcd .ed button { font: inherit; color: inherit; background: none; border: 1px solid currentColor; border-radius: 3px; padding: 1px 6px; cursor: pointer; text-align: left; }
+.lcd .ed button.on { background: var(--lcd-sel); color: var(--lcd-sel-ink); }
+.lcd .ed .opts { display: flex; flex-direction: column; gap: 3px; }
+.lcd .ed .num { display: flex; gap: 6px; align-items: center; }
+.lcd .ed input { width: 70px; font: inherit; }
+.hint { color: var(--sub); font-size: 13px; margin: 0; }
+.chk { font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+.log li { font: 12px/1.45 var(--font-mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; overflow-wrap: anywhere; }
+.log .m { color: var(--copper); font-weight: 600; }
+.log .empty { background: none; border: 0; color: var(--sub); font-family: var(--font-body); font-size: 13px; padding: 0; }
+.note { font-size: 13px; background: color-mix(in srgb, var(--copper) 14%, var(--panel)); border-radius: 6px; padding: 8px 10px; }
+.err { font-size: 13px; color: var(--bad); }
+details.card > summary { cursor: pointer; padding: 12px 14px; font-weight: 600; }
+.tbl-wrap { overflow-x: auto; padding: 0 14px 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--sub); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+td.n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+td.o { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; max-width: 420px; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 12px; font-size: 13px; margin: 0; }
+.kv dt { color: var(--sub); } .kv dd { margin: 0; font-family: var(--font-mono); overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title">@TITLE@</h1>
+    <p class="lead">Links die echte Weboberfläche aus dem Firmware-Code, rechts das Lua-Menü so, wie es am Sender erscheint. Beides wird bei jeder Änderung der Firmware neu erzeugt. Nur die Antworten des Moduls sind simuliert, nichts geht an ein echtes Modul.</p>
+  </header>
+  <div class="tabs" role="tablist" id="tabs" aria-label="Firmware und Variante"></div>
+  <div class="bench">
+    <section class="card" aria-label="Weboberfläche">
+      <div class="screen-bar"><span class="dot" id="dot"></span><span id="addr">192.168.4.1</span><span class="sp"></span>
+        <button class="btn" id="reload" type="button">Seite neu laden</button>
+        <button class="btn primary" id="reboot" type="button">Modul neu starten</button></div>
+      <div class="screen"><iframe id="frame" title="Weboberfläche des Moduls"></iframe>
+        <div class="boot" id="boot" hidden>Modul startet neu …</div></div>
+    </section>
+    <aside>
+      <div class="card">
+        <h2>Lua am Sender</h2>
+        <div class="lcd" id="lcd" role="list"></div>
+        <div class="pad">
+          <div class="row"><button class="btn" id="lua-back" type="button">◀ Zurück</button>
+            <button class="btn" id="lua-reload" type="button">Menü neu laden</button></div>
+          <label class="chk"><input type="checkbox" id="show-hidden"> Ausgeblendete Felder zeigen</label>
+          <p class="hint" id="lua-hint"></p>
+          <div class="err" id="lua-err" hidden></div>
+        </div>
+      </div>
+      <div class="card" id="hw-card" hidden><h2>Simuliertes Modul</h2><div class="pad"><dl class="kv" id="hw"></dl></div></div>
+      <div class="card">
+        <h2>Vom Web-UI gesendet</h2>
+        <div class="pad"><ul class="log" id="log"><li class="empty">Noch nichts gesendet.</li></ul>
+          <div class="note" id="note" hidden></div></div>
+      </div>
+    </aside>
+  </div>
+  <details class="card" id="tbl-card">
+    <summary id="tbl-sum">Alle Lua-Felder</summary>
+    <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Ordner</th><th>Typ</th><th>Name</th><th>Optionen / Bereich</th><th>Anzeige</th></tr></thead>
+      <tbody id="tbl"></tbody></table></div>
+  </details>
+  <p class="hint" id="foot"></p>
+</div>
+
+<script>
+var DATA = /*@DATA@*/null;
+var PST = {
+  mocks: {},
+  register: function (id, factory) { PST.mocks[id] = factory; },
+  logList: [],
+  note: function (m) { PST.onNote && PST.onNote(String(m)); },
+  // Hilfen fuer die Simulationen
+  json: function (o, status) { return { status: status || 200, text: JSON.stringify(o) }; },
+  text: function (t, status) { return { status: status || 200, text: String(t) }; },
+  parseBody: function (b) {
+    if (b == null || b === '') return {};
+    if (typeof b !== 'string') return { _file: true };
+    try { return JSON.parse(b); } catch (e) {}
+    var o = {}; b.split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) o[decodeURIComponent(p[0])] = decodeURIComponent((p[1] || '').replace(/\+/g, ' ')); });
+    return o;
+  },
+  merge: function (dst, src) { Object.keys(src || {}).forEach(function (k) { dst[k] = src[k]; }); return dst; }
+};
+</script>
+<script>
+/*@MOCKS@*/
+</script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var frame = $('frame');
+  var cur = null;            // {fw, v, mod, lua}
+  var cache = {};            // Modul-Zustand je Firmware/Variante bleibt beim Umschalten erhalten
+  var luaPath = [0], luaSel = null;
+
+  var SHIM = '(' + function () {
+    var P = parent.PST;
+    function route(m, u, b) { return P.request(m, u, b); }
+    window.fetch = function (u, o) {
+      o = o || {}; var m = (o.method || 'GET').toUpperCase();
+      var body = o.body; if (body && typeof body !== 'string') body = (body instanceof URLSearchParams) ? body.toString() : body;
+      var r = route(m, String(u), body);
+      return new Promise(function (res) { setTimeout(function () { res({ ok: r.status < 400, status: r.status,
+        json: function () { return Promise.resolve(JSON.parse(r.text)); }, text: function () { return Promise.resolve(r.text); },
+        headers: { get: function () { return null; } } }); }, 25); });
+    };
+    function X() { this.readyState = 0; this.status = 0; this.responseText = ''; this.upload = {}; this._h = {}; }
+    X.prototype.open = function (m, u) { this._m = String(m).toUpperCase(); this._u = String(u); this.readyState = 1; };
+    X.prototype.setRequestHeader = function () {};
+    X.prototype.addEventListener = function (e, f) { this['on' + e] = f; };
+    X.prototype.getResponseHeader = function () { return null; };
+    X.prototype.abort = function () {};
+    X.prototype.send = function (b) { var s = this, file = b && typeof b !== 'string';
+      setTimeout(function () { if (file && s.upload.onprogress) s.upload.onprogress({ lengthComputable: true, loaded: 1, total: 1 });
+        var r = route(s._m, s._u, file ? b : b); s.status = r.status; s.responseText = r.text; s.response = r.text; s.readyState = 4;
+        if (s.onreadystatechange) s.onreadystatechange(); if (s.onload) s.onload({ target: s }); }, file ? 300 : 30); };
+    window.XMLHttpRequest = X;
+    window.confirm = function () { return true; };
+    window.alert = function (m) { P.note(m); };
+    window.prompt = function (m, d) { return d || ''; };
+    window.EventSource = function () { this.close = function () {}; };
+    window.WebSocket = function () { this.close = function () {}; this.send = function () {}; };
+    var rl = location.reload; try { location.reload = function () { P.reloadPage(); }; } catch (e) {}
+  }.toString() + ')();';
+
+  PST.request = function (method, url, body) {
+    var u = String(url).replace(/^https?:\/\/[^/]+/, '');
+    var q = {}, path = u, i = u.indexOf('?');
+    if (i >= 0) { path = u.slice(0, i); u.slice(i + 1).split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) q[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); }); }
+    var r = null;
+    try { r = cur.mod.handle(method, path, q, body); } catch (e) { r = { status: 500, text: 'Simulation: ' + e.message }; console.error(e); }
+    if (!r) r = { status: 404, text: 'Nicht simuliert: ' + method + ' ' + path };
+    if (method !== 'GET' || r.status >= 400) {
+      PST.logList.unshift({ method: method, url: path + (i >= 0 ? url.slice(url.indexOf('?')) : ''), body: (body && typeof body !== 'string') ? '(Datei)' : body, status: r.status });
+      if (PST.logList.length > 40) PST.logList.length = 40;
+      renderLog();
+    }
+    if (cur.mod.after) cur.mod.after(method, path);
+    setTimeout(renderLua, 50);
+    return r;
+  };
+  PST.reloadPage = function () { loadPage(); };
+  PST.reboot = function () { reboot(); };
+
+  function loadPage() {
+    var fw = cur.fw;
+    if (!fw.page) { frame.srcdoc = '<p style="font-family:sans-serif;padding:20px">Diese Firmware hat keine Weboberfläche.</p>'; return; }
+    var p = fw.page, k = p.search(/<head[^>]*>/i);
+    var inj = '<script>' + SHIM + '<\/script>';
+    frame.srcdoc = k >= 0 ? p.slice(0, k) + p.slice(k).replace(/<head[^>]*>/i, function (m) { return m + inj; }) : inj + p;
+    $('addr').textContent = '192.168.4.1 · ' + fw.name + ' v' + (cur.v.version || '?') + ' · ' + cur.v.name;
+  }
+  function reboot() {
+    $('boot').hidden = false; $('dot').classList.add('busy');
+    setTimeout(function () { if (cur.mod.reboot) cur.mod.reboot(); loadPage(); luaPath = [0]; luaSel = null; renderLua(); renderHw();
+      $('boot').hidden = true; $('dot').classList.remove('busy'); }, 900);
+  }
+
+  // ── Lua ─────────────────────────────────────────────────────────────
+  function items() { return cur.v.items; }
+  function byId(id) { var r = null; items().forEach(function (it) { if (it.id === id) r = it; }); return r; }
+  function luaView(it) {
+    var M = cur.mod, v = { type: it.type, name: it.name, text: it.text, min: it.min || 0, max: it.max || 0, unit: it.unit || '', hidden: false, value: 0 };
+    if (it.type === 'select') v.max = Math.max(0, (it.text || '').split(';').length - 1);
+    v.value = luaGet(it);
+    if (it.view === 'luaHideAlways') v.hidden = true;
+    var vf = it.view && M.views && M.views[it.view];
+    if (vf) { try { vf(it, v); } catch (e) { console.error(e); } }
+    else if (it.view && it.view !== 'luaHideAlways') v.sim = false;
+    if (v.type === 'select') v.max = Math.max(0, (v.text || '').split(';').length - 1);
+    return v;
+  }
+  function luaGet(it) {
+    var M = cur.mod, f = it.get && M.get && M.get[it.get];
+    if (f) { try { return f(it.arg, it); } catch (e) { console.error(e); } }
+    if (cur.lua[it.id] != null) return cur.lua[it.id];
+    return it.type === 'u8' ? (it.min || 0) : 0;
+  }
+  function luaSet(it, val) {
+    var M = cur.mod, f = it.set && M.set && M.set[it.set];
+    if (f) { try { f(it.arg, val, it); } catch (e) { console.error(e); } }
+    else cur.lua[it.id] = val;
+    PST.logList.unshift({ method: 'LUA', url: 'Feld ' + it.id + ' „' + it.name + '“ = ' + val, body: '', status: 200 });
+    renderLog();
+  }
+  function children(pid) { return items().filter(function (it) { return it.parent === pid && it.id !== pid; }); }
+  function renderLua() {
+    if (!cur) return;
+    var lcd = $('lcd'), pid = luaPath[luaPath.length - 1], showHid = $('show-hidden').checked;
+    var folder = byId(pid), M = cur.mod;
+    lcd.innerHTML = '';
+    var hd = document.createElement('div'); hd.className = 'hd';
+    var a = document.createElement('span'); a.textContent = pid === 0 ? (M.deviceName ? M.deviceName() : cur.fw.name) : luaView(folder).name;
+    var b = document.createElement('span'); b.textContent = pid === 0 ? 'v' + (cur.v.version || '') : '';
+    hd.appendChild(a); hd.appendChild(b); lcd.appendChild(hd);
+    var shown = 0;
+    children(pid).forEach(function (it) {
+      var v = luaView(it);
+      if (v.hidden && !showHid) return;
+      shown++;
+      var row = document.createElement('button'); row.type = 'button'; row.className = 'it' + (v.hidden ? ' hid' : '');
+      row.setAttribute('role', 'listitem');
+      var n = document.createElement('span'), val = document.createElement('span'); val.className = 'v';
+      if (v.type === 'folder') { n.textContent = '> ' + v.name; }
+      else {
+        n.textContent = v.name;
+        if (v.type === 'info') { val.textContent = v.text || (it.view ? '…' : ''); row.classList.add('ro'); }
+        else if (v.type === 'select') { var o = (v.text || '').split(';'); val.textContent = it.runtime && !v.text ? '(zur Laufzeit)' : (o[v.value] != null ? o[v.value] : '?'); }
+        else { val.textContent = v.value + (v.unit ? ' ' + v.unit : ''); }
+        if ((v.type === 'u8' && v.min === v.max) || it.ro) row.classList.add('ro');
+      }
+      row.title = 'Feld ' + it.id + (it.view ? ' · Anzeige: ' + it.view + (M.views && M.views[it.view] ? '' : ' (nicht simuliert)') : '');
+      row.appendChild(n); row.appendChild(val);
+      row.addEventListener('click', function () {
+        if (v.type === 'folder') { luaPath.push(it.id); luaSel = null; renderLua(); return; }
+        if (row.classList.contains('ro')) return;
+        luaSel = luaSel === it.id ? null : it.id; renderLua();
+      });
+      lcd.appendChild(row);
+      if (luaSel === it.id) lcd.appendChild(editor(it, v));
+    });
+    if (!shown) { var e = document.createElement('div'); e.className = 'it ro'; e.textContent = '(leer)'; lcd.appendChild(e); }
+  }
+  function editor(it, v) {
+    var ed = document.createElement('div'); ed.className = 'ed';
+    if (v.type === 'select') {
+      var box = document.createElement('div'); box.className = 'opts';
+      (v.text || '').split(';').forEach(function (o, i) {
+        var bt = document.createElement('button'); bt.type = 'button'; bt.textContent = o; if (i === v.value) bt.className = 'on';
+        bt.addEventListener('click', function () { luaSet(it, i); luaSel = null; renderLua(); });
+        box.appendChild(bt);
+      });
+      ed.appendChild(box);
+    } else {
+      var w = document.createElement('div'); w.className = 'num';
+      var minus = document.createElement('button'); minus.type = 'button'; minus.textContent = '−';
+      var inp = document.createElement('input'); inp.type = 'number'; inp.min = v.min; inp.max = v.max; inp.value = v.value;
+      inp.setAttribute('aria-label', it.name);
+      var plus = document.createElement('button'); plus.type = 'button'; plus.textContent = '+';
+      var ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'OK';
+      var rng = document.createElement('span'); rng.textContent = v.min + '…' + v.max;
+      function clamp(x) { x = parseInt(x, 10); if (isNaN(x)) x = v.min; return Math.max(v.min, Math.min(v.max, x)); }
+      minus.addEventListener('click', function () { inp.value = clamp(+inp.value - 1); });
+      plus.addEventListener('click', function () { inp.value = clamp(+inp.value + 1); });
+      ok.addEventListener('click', function () { luaSet(it, clamp(inp.value)); luaSel = null; renderLua(); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ok.click(); });
+      [minus, inp, plus, ok, rng].forEach(function (x) { w.appendChild(x); });
+      ed.appendChild(w);
+    }
+    return ed;
+  }
+  $('lua-back').addEventListener('click', function () { if (luaPath.length > 1) luaPath.pop(); luaSel = null; renderLua(); });
+  $('lua-reload').addEventListener('click', function () { luaSel = null; renderLua(); });
+  $('show-hidden').addEventListener('change', renderLua);
+
+  function renderTable() {
+    var tb = $('tbl'); tb.innerHTML = '';
+    var names = {}; items().forEach(function (it) { names[it.id] = it.name; });
+    items().slice().sort(function (a, b) { return a.id - b.id; }).forEach(function (it) {
+      var tr = document.createElement('tr');
+      var range = it.type === 'u8' ? it.min + '…' + it.max + (it.unit ? ' ' + it.unit : '') : (it.type === 'folder' ? '' : (it.runtime ? '(zur Laufzeit)' : (it.text || '')));
+      [[it.id, 'n'], [it.id === 0 ? '' : (names[it.parent] || 'Hauptmenü') + ' (' + it.parent + ')', ''],
+       [{ folder: 'Ordner', info: 'Info', u8: 'Zahl', select: 'Auswahl' }[it.type] + (it.ro ? ', nur lesen' : ''), ''],
+       [it.name, ''], [range, 'o'], [it.view || '', 'o']].forEach(function (c) {
+        var td = document.createElement('td'); td.textContent = c[0]; if (c[1]) td.className = c[1]; tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    $('tbl-sum').textContent = 'Alle Lua-Felder (' + (items().length - 1) + ' ohne Hauptmenü, höchste ID ' + Math.max.apply(null, items().map(function (i) { return i.id; }).concat([0])) + ')';
+    $('tbl-card').hidden = !items().length;
+  }
+  function renderLog() {
+    var el = $('log'); el.innerHTML = '';
+    if (!PST.logList.length) { el.innerHTML = '<li class="empty">Noch nichts gesendet.</li>'; return; }
+    PST.logList.slice(0, 25).forEach(function (e) {
+      var li = document.createElement('li'), m = document.createElement('span'); m.className = 'm';
+      m.textContent = e.method + ' ' + e.url + (e.status >= 400 ? '  → ' + e.status : '');
+      li.appendChild(m);
+      if (e.body) { li.appendChild(document.createElement('br')); li.appendChild(document.createTextNode(String(e.body).slice(0, 400))); }
+      el.appendChild(li);
+    });
+  }
+  function renderHw() {
+    var rows = cur.mod.hw ? cur.mod.hw() : null, dl = $('hw'); dl.innerHTML = '';
+    $('hw-card').hidden = !rows || !rows.length;
+    (rows || []).forEach(function (r) { var dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = r[0]; dd.textContent = r[1]; dl.appendChild(dt); dl.appendChild(dd); });
+  }
+  var noteT = 0;
+  PST.onNote = function (m) { var n = $('note'); n.textContent = m; n.hidden = false; clearTimeout(noteT); noteT = setTimeout(function () { n.hidden = true; }, 6000); };
+
+  function select(fi, vi) {
+    var fw = DATA.firmwares[fi], v = fw.variants[vi], key = fw.id + '/' + v.id;
+    if (!cache[key]) {
+      var fac = PST.mocks[fw.mock.replace(/\.js$/, '')] || PST.mocks[fw.id];
+      cache[key] = { mod: fac ? fac(v.id, { firmware: fw, variant: v }) : { handle: function () { return null; } }, lua: {} };
+    }
+    cur = { fw: fw, v: v, mod: cache[key].mod, lua: cache[key].lua };
+    document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', t.dataset.k === key ? 'true' : 'false'); });
+    luaPath = [0]; luaSel = null;
+    loadPage(); renderLua(); renderTable(); renderHw(); renderLog();
+    var errs = v.lua_errors || [];
+    $('lua-err').hidden = !errs.length; $('lua-err').textContent = errs.join(' · ');
+    $('lua-hint').textContent = v.items.length
+      ? (v.hint ? v.hint + ' ' : '') + 'Feldnamen, Nummern und Auswahllisten kommen aus dem Code. Werte und Texte, die erst im Modul entstehen, sind simuliert.'
+      : 'Diese Firmware hat kein Lua-Menü.';
+    try { localStorage.setItem('pst-sel', key); } catch (e) {}
+  }
+  var tabs = $('tabs'), start = null, saved = null;
+  try { saved = localStorage.getItem('pst-sel'); } catch (e) {}
+  DATA.firmwares.forEach(function (fw, fi) {
+    fw.variants.forEach(function (v, vi) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'tab'; b.setAttribute('role', 'tab');
+      b.dataset.k = fw.id + '/' + v.id;
+      b.innerHTML = '<span></span><small></small>';
+      b.firstChild.textContent = DATA.firmwares.length > 1 ? fw.name + ' · ' + v.name : v.name;
+      b.lastChild.textContent = 'v' + (v.version || '?') + (v.items.length ? ' · ' + (v.items.length - 1) + ' Lua-Felder' : '');
+      b.addEventListener('click', function () { select(fi, vi); });
+      tabs.appendChild(b);
+      if (!start || b.dataset.k === saved) start = [fi, vi];
+      if (b.dataset.k === saved) saved = 'x';
+    });
+  });
+  $('reload').addEventListener('click', loadPage);
+  $('reboot').addEventListener('click', reboot);
+  $('foot').textContent = 'Erzeugt mit pruefstand/build.py ' + DATA.build + (DATA.firmwares[0].rc_common ? ' · RC_Common ' + DATA.firmwares[0].rc_common : '') + '. Neu bauen: python3 pruefstand/build.py';
+  select(start[0], start[1]);
+})();
+</script>
+</body>
+</html>

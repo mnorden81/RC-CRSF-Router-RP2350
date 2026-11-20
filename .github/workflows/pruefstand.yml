@@ -1,0 +1,24 @@
+name: Prüfstand
+
+# Prüft, ob pruefstand/pruefstand.html (WebUI + Lua-Menü im Browser) zum
+# Firmware-Code passt. Schlägt fehl, wenn die Seite nicht neu gebaut wurde,
+# Lua-Feld-IDs nicht stimmen oder die Firmware Routen/JSON-Felder hat, die
+# die Simulation nicht kennt. Abhilfe: python3 pruefstand/build.py
+# ausführen und das Ergebnis committen (siehe pruefstand/README.md).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pruefstand:
+    name: Prüfstand aktuell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Prüfstand prüfen
+        run: python3 pruefstand/build.py --check

@@ -1,0 +1,20 @@
+{
+  "title": "CRSF-Router RP2350 Prüfstand",
+  "firmwares": [
+    {
+      "id": "router8",
+      "name": "CRSF-Router8 (RP2350)",
+      "dir": "firmware/RC_CRSF_Router_RP2350",
+      "mock": "mock_router8.js",
+      "version": "FW_VERSION",
+      "lua": {
+        "files": ["src/RC_Common/*.h", "*.h", "*.cpp", "*.ino"],
+        "expect_max": "LUA_COUNT"
+      },
+      "export": ["DEVICE_NAME", "PORT_COUNT", "PORT_BAUD_DEFAULT", "PIN_UPLINK_RX", "PIN_UPLINK_TX", "PIN_P1_RX", "PIN_P1_TX", "PIN_P2_RX", "PIN_P2_TX", "PIN_P3_RX", "PIN_P3_TX", "PIN_P4_RX", "PIN_P4_TX", "PIN_P5_RX", "PIN_P5_TX", "PIN_P6_RX", "PIN_P6_TX", "PIN_P7_RX", "PIN_P7_TX", "PIN_STATUS_LED", "PIN_VSENSE"],
+      "variants": [
+        {"id": "rp2350", "name": "RP2350-Zero", "defines": {"ARDUINO_ARCH_RP2040": "1"}}
+      ]
+    }
+  ]
+}
