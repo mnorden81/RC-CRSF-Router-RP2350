@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRSF-Router RP2350 Prüfstand</title>
+<!-- Erzeugt von pruefstand/build.py aus dem Firmware-Code. Nicht von Hand aendern. -->
+<style>
+:root {
+  --bg: #eef2ee; --panel: #ffffff; --ink: #18231d; --sub: #5b6a61; --line: #d3ddd5;
+  --mask: #1d5a3c; --copper: #a8642a; --ok: #1f7a46; --warn: #a86a00; --bad: #b03a2e;
+  --code-bg: #f4f7f4; --lcd: #c9d6c0; --lcd-ink: #1b2618; --lcd-sel: #1b2618; --lcd-sel-ink: #c9d6c0;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1612; --panel: #16201a; --ink: #e3ebe5; --sub: #93a39a; --line: #2a3a31;
+    --mask: #4fae7c; --copper: #d99257; --ok: #5cc68a; --warn: #e0a640; --bad: #e57368; --code-bg: #111a15;
+    --lcd: #22301f; --lcd-ink: #cfe3c4; --lcd-sel: #cfe3c4; --lcd-sel-ink: #22301f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1612; --panel: #16201a; --ink: #e3ebe5; --sub: #93a39a; --line: #2a3a31;
+  --mask: #4fae7c; --copper: #d99257; --ok: #5cc68a; --warn: #e0a640; --bad: #e57368; --code-bg: #111a15;
+  --lcd: #22301f; --lcd-ink: #cfe3c4; --lcd-sel: #cfe3c4; --lcd-sel-ink: #22301f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body);
+  padding: 18px max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left)); }
+.wrap { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 26px; margin: 0; line-height: 1.2; }
+.lead { color: var(--sub); margin: 4px 0 0; max-width: 80ch; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab { font: 600 14px/1.2 var(--font-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 12px; cursor: pointer; text-align: left; }
+.tab small { display: block; font: 400 12px var(--font-mono); color: var(--sub); margin-top: 2px; }
+.tab[aria-selected="true"] { border-color: var(--mask); box-shadow: inset 0 -3px 0 var(--mask); }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+@media (max-width: 960px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.card > h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--copper); margin: 0; padding: 10px 14px 0; }
+.pad { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.screen-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line);
+  font: 12px var(--font-mono); color: var(--sub); flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.dot.busy { background: var(--warn); }
+.screen-bar .sp { flex: 1; }
+.screen { position: relative; overflow: hidden; }
+iframe { display: block; width: 100%; height: 860px; border: 0; background: #fff; }
+.boot { position: absolute; inset: 37px 0 0 0; display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--panel) 88%, transparent); font-weight: 600; }
+aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+button.btn { font: 600 14px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+button.btn.primary { background: var(--mask); color: #fff; border-color: var(--mask); }
+:root[data-theme="dark"] button.btn.primary { color: #0f1612; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.btn.primary { color: #0f1612; } }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+/* Sender-Display */
+.lcd { background: var(--lcd); color: var(--lcd-ink); font: 13px/1.35 var(--font-mono); border-radius: 6px;
+  margin: 10px 14px 0; padding: 6px 0; min-height: 300px; max-height: 520px; overflow-y: auto; border: 3px solid #2b3328; }
+.lcd .hd { display: flex; justify-content: space-between; gap: 8px; padding: 2px 8px 5px; border-bottom: 1px solid currentColor; margin-bottom: 3px; font-weight: 700; }
+.lcd .it { display: flex; justify-content: space-between; gap: 10px; padding: 2px 8px; cursor: pointer; width: 100%;
+  background: none; border: 0; color: inherit; font: inherit; text-align: left; }
+.lcd .it:hover, .lcd .it.sel { background: var(--lcd-sel); color: var(--lcd-sel-ink); }
+.lcd .it .v { text-align: right; overflow-wrap: anywhere; }
+.lcd .it.ro { cursor: default; }
+.lcd .it.ro:hover { background: none; color: inherit; }
+.lcd .it.hid { opacity: .45; }
+.lcd .ed { padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px dashed currentColor; }
+.lcd .ed button { font: inherit; color: inherit; background: none; border: 1px solid currentColor; border-radius: 3px; padding: 1px 6px; cursor: pointer; text-align: left; }
+.lcd .ed button.on { background: var(--lcd-sel); color: var(--lcd-sel-ink); }
+.lcd .ed .opts { display: flex; flex-direction: column; gap: 3px; }
+.lcd .ed .num { display: flex; gap: 6px; align-items: center; }
+.lcd .ed input { width: 70px; font: inherit; }
+.hint { color: var(--sub); font-size: 13px; margin: 0; }
+.chk { font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+.log li { font: 12px/1.45 var(--font-mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; overflow-wrap: anywhere; }
+.log .m { color: var(--copper); font-weight: 600; }
+.log .empty { background: none; border: 0; color: var(--sub); font-family: var(--font-body); font-size: 13px; padding: 0; }
+.note { font-size: 13px; background: color-mix(in srgb, var(--copper) 14%, var(--panel)); border-radius: 6px; padding: 8px 10px; }
+.err { font-size: 13px; color: var(--bad); }
+details.card > summary { cursor: pointer; padding: 12px 14px; font-weight: 600; }
+.tbl-wrap { overflow-x: auto; padding: 0 14px 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--sub); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+td.n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+td.o { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; max-width: 420px; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 12px; font-size: 13px; margin: 0; }
+.kv dt { color: var(--sub); } .kv dd { margin: 0; font-family: var(--font-mono); overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title">CRSF-Router RP2350 Prüfstand</h1>
+    <p class="lead">Links die echte Weboberfläche aus dem Firmware-Code, rechts das Lua-Menü so, wie es am Sender erscheint. Beides wird bei jeder Änderung der Firmware neu erzeugt. Nur die Antworten des Moduls sind simuliert, nichts geht an ein echtes Modul.</p>
+  </header>
+  <div class="tabs" role="tablist" id="tabs" aria-label="Firmware und Variante"></div>
+  <div class="bench">
+    <section class="card" aria-label="Weboberfläche">
+      <div class="screen-bar"><span class="dot" id="dot"></span><span id="addr">192.168.4.1</span><span class="sp"></span>
+        <button class="btn" id="reload" type="button">Seite neu laden</button>
+        <button class="btn primary" id="reboot" type="button">Modul neu starten</button></div>
+      <div class="screen"><iframe id="frame" title="Weboberfläche des Moduls"></iframe>
+        <div class="boot" id="boot" hidden>Modul startet neu …</div></div>
+    </section>
+    <aside>
+      <div class="card">
+        <h2>Lua am Sender</h2>
+        <div class="lcd" id="lcd" role="list"></div>
+        <div class="pad">
+          <div class="row"><button class="btn" id="lua-back" type="button">◀ Zurück</button>
+            <button class="btn" id="lua-reload" type="button">Menü neu laden</button></div>
+          <label class="chk"><input type="checkbox" id="show-hidden"> Ausgeblendete Felder zeigen</label>
+          <p class="hint" id="lua-hint"></p>
+          <div class="err" id="lua-err" hidden></div>
+        </div>
+      </div>
+      <div class="card" id="hw-card" hidden><h2>Simuliertes Modul</h2><div class="pad"><dl class="kv" id="hw"></dl></div></div>
+      <div class="card">
+        <h2>Vom Web-UI gesendet</h2>
+        <div class="pad"><ul class="log" id="log"><li class="empty">Noch nichts gesendet.</li></ul>
+          <div class="note" id="note" hidden></div></div>
+      </div>
+    </aside>
+  </div>
+  <details class="card" id="tbl-card">
+    <summary id="tbl-sum">Alle Lua-Felder</summary>
+    <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Ordner</th><th>Typ</th><th>Name</th><th>Optionen / Bereich</th><th>Anzeige</th></tr></thead>
+      <tbody id="tbl"></tbody></table></div>
+  </details>
+  <p class="hint" id="foot"></p>
+</div>
+
+<script>
+var DATA = {"build": "1.0", "firmwares": [{"id": "router8", "mock": "mock_router8.js", "name": "CRSF-Router8 (RP2350)", "rc_common": "", "variants": [{"consts": {"DEVICE_NAME": "CRSF-Router8", "PIN_P1_RX": 3, "PIN_P1_TX": 2, "PIN_P2_RX": 5, "PIN_P2_TX": 4, "PIN_P3_RX": 7, "PIN_P3_TX": 6, "PIN_P4_RX": 9, "PIN_P4_TX": 8, "PIN_P5_RX": 11, "PIN_P5_TX": 10, "PIN_P6_RX": 13, "PIN_P6_TX": 12, "PIN_P7_RX": 15, "PIN_P7_TX": 14, "PIN_STATUS_LED": 16, "PIN_UPLINK_RX": 1, "PIN_UPLINK_TX": 0, "PIN_VSENSE": 26, "PORT_BAUD_DEFAULT": 4, "PORT_COUNT": 7}, "hint": "", "id": "rp2350", "items": [{"arg": 0, "get": null, "id": 0, "max": null, "min": null, "name": "", "parent": 0, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 1, "max": null, "min": null, "name": "Version", "parent": 0, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowVersion"}, {"arg": 0, "get": null, "id": 2, "max": null, "min": null, "name": "Ports (nach Neustart)", "parent": 0, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 0, "get": "luaGetPort", "id": 3, "max": null, "min": null, "name": "Port 1", "parent": 2, "ro": false, "runtime": false, "set": "luaSetPort", "text": "Aus;57600;115200;400000;420000;921600", "type": "select", "unit": null, "view": null}, {"arg": 1, "get": "luaGetPort", "id": 4, "max": null, "min": null, "name": "Port 2", "parent": 2, "ro": false, "runtime": false, "set": "luaSetPort", "text": "Aus;57600;115200;400000;420000;921600", "type": "select", "unit": null, "view": null}, {"arg": 2, "get": "luaGetPort", "id": 5, "max": null, "min": null, "name": "Port 3", "parent": 2, "ro": false, "runtime": false, "set": "luaSetPort", "text": "Aus;57600;115200;400000;420000;921600", "type": "select", "unit": null, "view": null}, {"arg": 3, "get": "luaGetPort", "id": 6, "max": null, "min": null, "name": "Port 4", "parent": 2, "ro": false, "runtime": false, "set": "luaSetPort", "text": "Aus;57600;115200;400000;420000;921600", "type": "select", "unit": null, "view": null}, {"arg": 4, "get": "luaGetPort", "id": 7, "max": null, "min": null, "name": "Port 5", "parent": 2, "ro": false, "runtime": false, "set": "luaSetPort", "text": "Aus;57600;115200;400000;420000;921600", "type": "select", "unit": null, "view": null}, {"arg": 5, "get": "luaGetPort", "id": 8, "max": null, "min": null, "name": "Port 6", "parent": 2, "ro": false, "runtime": false, "set": "luaSetPort", "text": "Aus;57600;115200;400000;420000;921600", "type": "select", "unit": null, "view": null}, {"arg": 6, "get": "luaGetPort", "id": 9, "max": null, "min": null, "name": "Port 7", "parent": 2, "ro": false, "runtime": false, "set": "luaSetPort", "text": "Aus;57600;115200;400000;420000;921600", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 10, "max": null, "min": null, "name": "Filter", "parent": 0, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 11, "max": null, "min": null, "name": "Port 1", "parent": 10, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 0, "get": "luaGetRc", "id": 12, "max": null, "min": null, "name": "RC-Kanaele runter", "parent": 11, "ro": false, "runtime": false, "set": "luaSetRc", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": "luaGetLs", "id": 13, "max": null, "min": null, "name": "LinkStats runter", "parent": 11, "ro": false, "runtime": false, "set": "luaSetLs", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": "luaGetTele", "id": 14, "max": null, "min": null, "name": "Telemetrie hoch", "parent": 11, "ro": false, "runtime": false, "set": "luaSetTele", "text": "Alle;50/s;20/s;10/s;5/s;2/s;1/s;Aus", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 15, "max": null, "min": null, "name": "Port 2", "parent": 10, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 1, "get": "luaGetRc", "id": 16, "max": null, "min": null, "name": "RC-Kanaele runter", "parent": 15, "ro": false, "runtime": false, "set": "luaSetRc", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 1, "get": "luaGetLs", "id": 17, "max": null, "min": null, "name": "LinkStats runter", "parent": 15, "ro": false, "runtime": false, "set": "luaSetLs", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 1, "get": "luaGetTele", "id": 18, "max": null, "min": null, "name": "Telemetrie hoch", "parent": 15, "ro": false, "runtime": false, "set": "luaSetTele", "text": "Alle;50/s;20/s;10/s;5/s;2/s;1/s;Aus", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 19, "max": null, "min": null, "name": "Port 3", "parent": 10, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 2, "get": "luaGetRc", "id": 20, "max": null, "min": null, "name": "RC-Kanaele runter", "parent": 19, "ro": false, "runtime": false, "set": "luaSetRc", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 2, "get": "luaGetLs", "id": 21, "max": null, "min": null, "name": "LinkStats runter", "parent": 19, "ro": false, "runtime": false, "set": "luaSetLs", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 2, "get": "luaGetTele", "id": 22, "max": null, "min": null, "name": "Telemetrie hoch", "parent": 19, "ro": false, "runtime": false, "set": "luaSetTele", "text": "Alle;50/s;20/s;10/s;5/s;2/s;1/s;Aus", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 23, "max": null, "min": null, "name": "Port 4", "parent": 10, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 3, "get": "luaGetRc", "id": 24, "max": null, "min": null, "name": "RC-Kanaele runter", "parent": 23, "ro": false, "runtime": false, "set": "luaSetRc", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 3, "get": "luaGetLs", "id": 25, "max": null, "min": null, "name": "LinkStats runter", "parent": 23, "ro": false, "runtime": false, "set": "luaSetLs", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 3, "get": "luaGetTele", "id": 26, "max": null, "min": null, "name": "Telemetrie hoch", "parent": 23, "ro": false, "runtime": false, "set": "luaSetTele", "text": "Alle;50/s;20/s;10/s;5/s;2/s;1/s;Aus", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 27, "max": null, "min": null, "name": "Port 5", "parent": 10, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 4, "get": "luaGetRc", "id": 28, "max": null, "min": null, "name": "RC-Kanaele runter", "parent": 27, "ro": false, "runtime": false, "set": "luaSetRc", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 4, "get": "luaGetLs", "id": 29, "max": null, "min": null, "name": "LinkStats runter", "parent": 27, "ro": false, "runtime": false, "set": "luaSetLs", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 4, "get": "luaGetTele", "id": 30, "max": null, "min": null, "name": "Telemetrie hoch", "parent": 27, "ro": false, "runtime": false, "set": "luaSetTele", "text": "Alle;50/s;20/s;10/s;5/s;2/s;1/s;Aus", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 31, "max": null, "min": null, "name": "Port 6", "parent": 10, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 5, "get": "luaGetRc", "id": 32, "max": null, "min": null, "name": "RC-Kanaele runter", "parent": 31, "ro": false, "runtime": false, "set": "luaSetRc", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 5, "get": "luaGetLs", "id": 33, "max": null, "min": null, "name": "LinkStats runter", "parent": 31, "ro": false, "runtime": false, "set": "luaSetLs", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 5, "get": "luaGetTele", "id": 34, "max": null, "min": null, "name": "Telemetrie hoch", "parent": 31, "ro": false, "runtime": false, "set": "luaSetTele", "text": "Alle;50/s;20/s;10/s;5/s;2/s;1/s;Aus", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 35, "max": null, "min": null, "name": "Port 7", "parent": 10, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 6, "get": "luaGetRc", "id": 36, "max": null, "min": null, "name": "RC-Kanaele runter", "parent": 35, "ro": false, "runtime": false, "set": "luaSetRc", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 6, "get": "luaGetLs", "id": 37, "max": null, "min": null, "name": "LinkStats runter", "parent": 35, "ro": false, "runtime": false, "set": "luaSetLs", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 6, "get": "luaGetTele", "id": 38, "max": null, "min": null, "name": "Telemetrie hoch", "parent": 35, "ro": false, "runtime": false, "set": "luaSetTele", "text": "Alle;50/s;20/s;10/s;5/s;2/s;1/s;Aus", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 39, "max": null, "min": null, "name": "Geraete", "parent": 0, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 0, "get": "luaGetSearch", "id": 40, "max": null, "min": null, "name": "Geraete suchen", "parent": 39, "ro": false, "runtime": false, "set": "luaSetSearch", "text": "Nein;Jetzt", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 41, "max": null, "min": null, "name": "Port 1", "parent": 39, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowDevices"}, {"arg": 1, "get": null, "id": 42, "max": null, "min": null, "name": "Port 2", "parent": 39, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowDevices"}, {"arg": 2, "get": null, "id": 43, "max": null, "min": null, "name": "Port 3", "parent": 39, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowDevices"}, {"arg": 3, "get": null, "id": 44, "max": null, "min": null, "name": "Port 4", "parent": 39, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowDevices"}, {"arg": 4, "get": null, "id": 45, "max": null, "min": null, "name": "Port 5", "parent": 39, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowDevices"}, {"arg": 5, "get": null, "id": 46, "max": null, "min": null, "name": "Port 6", "parent": 39, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowDevices"}, {"arg": 6, "get": null, "id": 47, "max": null, "min": null, "name": "Port 7", "parent": 39, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowDevices"}, {"arg": 0, "get": "luaGetAddr", "id": 48, "max": 15, "min": 0, "name": "Modul Adresse", "parent": 0, "ro": false, "runtime": false, "set": "luaSetAddr", "text": null, "type": "u8", "unit": "", "view": null}, {"arg": 0, "get": null, "id": 49, "max": null, "min": null, "name": "Telemetrie", "parent": 0, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 0, "get": "luaGetVMode", "id": 50, "max": null, "min": null, "name": "Spannung senden", "parent": 49, "ro": false, "runtime": false, "set": "luaSetVMode", "text": "Aus;als RxBt;als Zellen", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": "luaGetVCorr", "id": 51, "max": null, "min": null, "name": "Spannung Korrektur", "parent": 49, "ro": false, "runtime": false, "set": "luaSetVCorr", "text": "-0.5V;-0.4V;-0.3V;-0.2V;-0.1V;0.0V;+0.1V;+0.2V;+0.3V;+0.4V;+0.5V", "type": "select", "unit": null, "view": "luaViewVCorr"}, {"arg": 0, "get": null, "id": 52, "max": null, "min": null, "name": "Spannung", "parent": 49, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowVolt"}, {"arg": 0, "get": "luaGetTSend", "id": 53, "max": null, "min": null, "name": "Temperatur senden", "parent": 49, "ro": false, "runtime": false, "set": "luaSetTSend", "text": "Aus;Ein", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 54, "max": null, "min": null, "name": "Chiptemperatur", "parent": 49, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowTemp"}, {"arg": 0, "get": null, "id": 55, "max": null, "min": null, "name": "Status", "parent": 0, "ro": false, "runtime": false, "set": null, "text": null, "type": "folder", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 56, "max": null, "min": null, "name": "Frames runter", "parent": 55, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowCount"}, {"arg": 1, "get": null, "id": 57, "max": null, "min": null, "name": "Frames hoch", "parent": 55, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowCount"}, {"arg": 2, "get": null, "id": 58, "max": null, "min": null, "name": "Verworfen", "parent": 55, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowCount"}, {"arg": 3, "get": null, "id": 59, "max": null, "min": null, "name": "Gefiltert", "parent": 55, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowCount"}, {"arg": 4, "get": null, "id": 60, "max": null, "min": null, "name": "CRC-Fehler unten", "parent": 55, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowCount"}, {"arg": 0, "get": null, "id": 61, "max": null, "min": null, "name": "Adresskonflikt", "parent": 55, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowDup"}, {"arg": 0, "get": null, "id": 62, "max": null, "min": null, "name": "Ports aktiv", "parent": 55, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowPorts"}, {"arg": 0, "get": "luaGetLed", "id": 63, "max": null, "min": null, "name": "LED Farbfolge", "parent": 0, "ro": false, "runtime": false, "set": "luaSetLed", "text": "GRB;RGB", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": "luaGetRestart", "id": 64, "max": null, "min": null, "name": "Neustart", "parent": 0, "ro": false, "runtime": false, "set": "luaSetRestart", "text": "Nein;Jetzt", "type": "select", "unit": null, "view": null}, {"arg": 0, "get": null, "id": 65, "max": null, "min": null, "name": "Geraetename", "parent": 0, "ro": false, "runtime": false, "set": null, "text": "", "type": "info", "unit": null, "view": "luaShowName"}], "lua_errors": [], "name": "RP2350-Zero", "version": "0.4.9"}], "warn": []}], "repo": "", "title": "CRSF-Router RP2350 Prüfstand"};
+var PST = {
+  mocks: {},
+  register: function (id, factory) { PST.mocks[id] = factory; },
+  logList: [],
+  note: function (m) { PST.onNote && PST.onNote(String(m)); },
+  // Hilfen fuer die Simulationen
+  json: function (o, status) { return { status: status || 200, text: JSON.stringify(o) }; },
+  text: function (t, status) { return { status: status || 200, text: String(t) }; },
+  parseBody: function (b) {
+    if (b == null || b === '') return {};
+    if (typeof b !== 'string') return { _file: true };
+    try { return JSON.parse(b); } catch (e) {}
+    var o = {}; b.split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) o[decodeURIComponent(p[0])] = decodeURIComponent((p[1] || '').replace(/\+/g, ' ')); });
+    return o;
+  },
+  merge: function (dst, src) { Object.keys(src || {}).forEach(function (k) { dst[k] = src[k]; }); return dst; }
+};
+</script>
+<script>
+// Simulation der RC_Common-Teile, die alle Module gleich haben:
+// /api/uartroles, /api/otaupdate, /api/backup/*, /api/funk, /api/funk/reset.
+// Gleiche Datei in allen Repos (pruefstand/mock_common.js).
+PST.common = function (o) {
+  // o: { backupData(): Objekt fuer eine Sicherung, funkRole(): 'Zentrale'|'Teilnehmer'|null,
+  //      funkCfg(): {id,ch,pwr,rate,back}, name(): Geraetename, addr(): Modul-Adresse }
+  var backups = [{ name: '001_2026-11-18_2010.json', size: 1830, auto: 0 }, { name: '002_auto_2026-11-19_0815.json', size: 1830, auto: 1 }];
+  var store = {};
+  var funkReset = 0;
+  function funkStatus() {
+    var role = o.funkRole ? o.funkRole() : null;
+    var c = o.funkCfg ? o.funkCfg() : { id: 1, ch: 1, pwr: 20, rate: 10, back: true };
+    if (!role) return { role: 'aus', name: o.name(), addr_nr: o.addr(), addr: '0x' + (0xC0 + o.addr()).toString(16).toUpperCase(),
+      mac: '24:6F:28:AA:10:01', id: c.id, ch: c.ch, pwr: c.pwr, rate: c.rate, back: c.back, connected: false, lost_ms: 0,
+      loss: 0, rssi: 0, conflict: false, dup_addr: false,
+      own: { ch_cable: 0, ch_funk: 0, frames_out: 0, frames_in: 0, sent: 0, noack: 0, qfull: 0, senderr: 0, crc: 0, stale: 0, rate_drop: 0 },
+      total: { frames_out: 0, frames_in: 0, sent: 0, wr_bytes: 0, wr_resync: 0, back_drop: 0, no_peer: 0 }, peers: [] };
+    var z = role === 'Zentrale';
+    var k = funkReset ? 0 : 1;
+    return { role: role, name: o.name(), addr_nr: o.addr(), addr: '0x' + (0xC0 + o.addr()).toString(16).toUpperCase(),
+      mac: '24:6F:28:AA:10:01', id: c.id, ch: c.ch, pwr: c.pwr, rate: c.rate, back: c.back, connected: true, lost_ms: 0,
+      loss: 0.2, rssi: -48, conflict: false, dup_addr: false,
+      own: { ch_cable: z ? 250 : 0, ch_funk: z ? 0 : 99, frames_out: z ? 260 : 12, frames_in: z ? 12 : 260, sent: z ? 260 : 12,
+        noack: 0, qfull: 0, senderr: 0, crc: 0, stale: 0, rate_drop: z ? 150 : 0 },
+      total: { frames_out: 51234 * k, frames_in: 2210 * k, sent: 51234 * k, wr_bytes: 812345 * k, wr_resync: 0, back_drop: 0, no_peer: 0 },
+      peers: [{ name: z ? 'Sound Mini' : 'Zentrale', role: z ? 'Teilnehmer' : 'Zentrale', partner: true, addr: z ? '0xC2' : '0xC0',
+        mac: '24:6F:28:AA:10:02', pps: z ? 12 : 99, loss: 0.2, rssi: -48, alive: true, drops: 0, gap: 38, up: '12 min' }] };
+  }
+  return {
+    handle: function (m, path, q, body) {
+      if (path === '/api/uartroles') return PST.json({ roles: [{ id: 0, name: 'Aus', baud: 0 }, { id: 1, name: 'CRSF', baud: 420000 },
+        { id: 2, name: 'S.Port', baud: 57600 }, { id: 3, name: 'GPS', baud: 1 }, { id: 4, name: 'Raw', baud: 115200 }],
+        bauds: [1, 9600, 19200, 38400, 57600, 115200, 230400, 420000], auto: 1 });
+      if (path === '/api/otaupdate') { PST.note('Firmware-Update simuliert: Modul würde jetzt neu starten.'); return PST.text('OK'); }
+      if (path === '/api/backup/list') return PST.json({ ok: true, files: backups, free: 1048576 });
+      if (path === '/api/backup/save') {
+        var nr = backups.length + 1, name = ('00' + nr).slice(-3) + (q.auto === '1' ? '_auto_' : '_') + (q.when || '2026-11-20_0900') + '.json';
+        store[name] = body; backups.push({ name: name, size: (body || '').length, auto: q.auto === '1' ? 1 : 0 });
+        return PST.json({ ok: true, file: name });
+      }
+      if (path === '/api/backup/get' && q.file) {
+        if (store[q.file]) return PST.text(store[q.file]);
+        return PST.json(o.backupData ? o.backupData() : {});
+      }
+      if (path === '/api/backup/get' && !q.file) return PST.json({ ok: false, error: 'bad_name' }, 400);
+      if (path === '/api/backup/delete') { backups = backups.filter(function (b) { return b.name !== q.file; }); return PST.json({ ok: true }); }
+      if (path === '/api/funk') return PST.json(funkStatus());
+      if (path === '/api/funk/reset') { funkReset = 1; return PST.json({ ok: true }); }
+      return null;
+    },
+    funkSummary: function () {
+      var role = o.funkRole ? o.funkRole() : null;
+      if (!role) return null;
+      return { role: role, connected: true, peers: 1, loss: 0.2, rssi: -48, conflict: false, dup_addr: false };
+    }
+  };
+};
+// Werte fuer die Lua-Ordner "Funk" (gleich in allen Modulen mit Funk)
+PST.funkLua = function (cfg, getMode, setMode) {
+  var PWR = [2, 5, 8, 11, 15, 20], RATE = [0, 5, 10, 20, 50];
+  return {
+    get: {
+      luaGetFunkMode: function () { return getMode(); },
+      luaGetFunk: function (i) { return [cfg.id, cfg.ch, Math.max(0, PWR.indexOf(cfg.pwr)), Math.max(0, RATE.indexOf(cfg.rate)), cfg.back ? 1 : 0][i]; }
+    },
+    set: {
+      luaSetFunkMode: function (a, v) { setMode(v); },
+      luaSetFunk: function (i, v) { if (i === 0) cfg.id = v; if (i === 1) cfg.ch = v; if (i === 2) cfg.pwr = PWR[v]; if (i === 3) cfg.rate = RATE[v]; if (i === 4) cfg.back = !!v; }
+    },
+    views: {
+      luaShowFunkFolder: function (it, v) { var m = getMode(); v.name = m ? 'Funk (' + (m === 1 ? 'Zentrale' : 'Teilnehmer') + ', verbunden)' : 'Funk (aus)'; },
+      luaViewFunkSet: function (it, v) { if (!getMode()) v.hidden = true; },
+      luaViewFunkRate: function (it, v) { if (getMode() !== 1) v.hidden = true; },
+      luaViewFunkBack: function (it, v) { if (getMode() !== 2) v.hidden = true; },
+      luaViewFunkInfo: function (it, v) { v.text = getMode() ? '1 Gegenst. 0.2% -48dBm' : 'Funk aus'; }
+    }
+  };
+};
+PST.mergeLua = function (dst) {
+  for (var i = 1; i < arguments.length; i++) {
+    var s = arguments[i];
+    ['get', 'set', 'views'].forEach(function (k) { dst[k] = dst[k] || {}; PST.merge(dst[k], s[k] || {}); });
+  }
+  return dst;
+};
+
+// Allgemeine Simulation aus den Beispielantworten, die build.py aus dem
+// Firmware-Code erzeugt (ctx.variant.api: {"GET /api/config": {...}}).
+// GET liefert den aktuellen Stand, POST mit JSON- oder Formular-Daten traegt
+// jedes Feld dort ein, wo es in einer GET-Antwort vorkommt (auch verschachtelt).
+// opts.patch: Startwerte ueberschreiben, opts.alias: {"post_feld": "get_feld"},
+// opts.routes: eigene Behandlung je "METHODE /pfad" oder "/pfad".
+PST.autoMock = function (ctx, opts) {
+  opts = opts || {};
+  var api = JSON.parse(JSON.stringify(ctx.variant.api || {}));
+  function deepPatch(dst, src) {
+    Object.keys(src || {}).forEach(function (k) {
+      if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k] && typeof dst[k] === 'object') deepPatch(dst[k], src[k]);
+      else dst[k] = src[k];
+    });
+  }
+  Object.keys(opts.patch || {}).forEach(function (r) { if (api[r]) deepPatch(api[r], opts.patch[r]); });
+  function setDeep(o, key, val, done) {
+    if (!o || typeof o !== 'object') return done;
+    if (Array.isArray(o)) { o.forEach(function (x) { done = setDeep(x, key, val, done); }); return done; }
+    Object.keys(o).forEach(function (k) {
+      if (k === key && (typeof o[k] !== 'object' || o[k] === null)) {
+        var t = typeof o[k];
+        o[k] = t === 'number' ? (val === true ? 1 : val === false ? 0 : Number(val)) : t === 'boolean' ? (val === true || val === 1 || val === '1' || val === 'true') : val;
+        done = true;
+      } else if (o[k] && typeof o[k] === 'object') done = setDeep(o[k], key, val, done);
+    });
+    return done;
+  }
+  var M = {
+    api: api,
+    get: function (path) { return api['GET ' + path]; },
+    apply: function (body) {
+      var d = PST.parseBody(body);
+      Object.keys(d).forEach(function (k) {
+        var key = (opts.alias || {})[k] || k;
+        Object.keys(api).forEach(function (r) { setDeep(api[r], key, d[k], false); });
+      });
+      return d;
+    },
+    handle: function (m, path, q, body) {
+      var h = (opts.routes || {})[m + ' ' + path] || (opts.routes || {})[path];
+      if (h) { var r = h(q, body, m); if (r) return r; }
+      if (api[m + ' ' + path]) return PST.json(api[m + ' ' + path]);
+      if (m === 'GET' && api['ANY ' + path]) return PST.json(api['ANY ' + path]);
+      if (m !== 'GET') {
+        M.apply(body);
+        if (api['ANY ' + path]) return PST.json(api['ANY ' + path]);
+        return PST.json({ ok: true });
+      }
+      return null;
+    }
+  };
+  return M;
+};
+
+// Gemeinsamer Teil der Soundmodule (Sound Mini, ESP32-RC-Sound, Multiswitch-
+// Sound): Sound-Dateien, Zuordnung, Test, Sicherungen auf SD und die
+// Lua-Ordner Motor, Sounds und Sound-Zuordnung (gleiche Funktionsnamen in
+// allen Sound-Firmwares).
+// o: { C: Konfiguration wie GET /api/config bzw. /api/sconfig (motor, sounds,
+//      sound_files), store: 'Flash'|'SD-Karte', total: Bytes, pins(): true wenn
+//      die Platine PWM-/Pin-Eingaenge hat (ESP32-RC-Sound V1/V2), sport(): S.Port aktiv }
+PST.soundCore = function (o) {
+  var C = o.C;
+  var files = [{ name: 'loop.wav', size: 182044 }, { name: 'shut.wav', size: 96020 }, { name: 'start.wav', size: 120400 },
+    { name: 'sound1.wav', size: 40210 }, { name: 'sound2.wav', size: 61002 }, { name: 'Horn.wav', size: 52230 }];
+  // Reihenfolge wie in der Firmware: Motor-Plaetze, dann Sound 1..N
+  // (JavaScript sortiert Zahlen-Schluessel sonst nach vorne)
+  var SLOTS = Object.keys(C.sound_files).filter(function (k) { return isNaN(+k); })
+    .concat(Object.keys(C.sound_files).filter(function (k) { return !isNaN(+k); }).sort(function (a, b) { return a - b; }));
+  var LABEL = SLOTS.map(function (k) { return k === 'loop' ? 'Loop' : k === 'shut' ? 'Standgas' : k === 'start' ? 'Start' : 'Sound ' + k; });
+  var backups = [{ name: 'config_0001_v' + String(o.version || '').replace('.', '') + '.json', size: 2210 }];
+  var testOn = {};
+  function pins() { return o.pins ? o.pins() : false; }
+  function used() { return files.reduce(function (a, f) { return a + Math.ceil(f.size / 4096) * 4096 + 8192; }, 8192); }
+  function fsize(n) { var f = files.filter(function (x) { return x.name.toLowerCase() === String(n).toLowerCase(); })[0]; return f ? f.size : 0; }
+  function soundCfg(id) { return id === 0 ? C.motor : C.sounds[id - 1]; }
+  function slotOf(key) { return SLOTS.indexOf(String(key)); }
+  var S = {
+    files: function () { return files; }, slots: SLOTS, labels: LABEL, used: used, fsize: fsize, testOn: testOn,
+    soundFiles: function () {
+      var s = {};
+      SLOTS.forEach(function (k) { var f = C.sound_files[k]; s[k] = { file: f, exists: !!f && fsize(f) > 0, size: fsize(f) }; });
+      return { ok: true, slots: s };
+    },
+    soundLib: function () {
+      return { ok: true, maxlen: 24, store: o.store, total: o.total, used: used(), more: false,
+        files: files.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }),
+        slots: SLOTS.map(function (k, i) { return { key: k, label: LABEL[i], file: C.sound_files[k] }; }) };
+    },
+    sportJson: function () {
+      var on = o.sport ? o.sport() : false;
+      function pk(x) { return { online: x, cells: x ? 3 : 0, total: x ? 11.82 : 0, min: x ? 3.93 : 0, soc: x ? 78 : 0, cv: x ? [3.95, 3.94, 3.93, 0, 0, 0] : [0, 0, 0, 0, 0, 0] }; }
+      return { s0: pk(on), s1: pk(false), pid0: (C.sport || {}).poll_id0 || 'A1', pid1: (C.sport || {}).poll_id1 || '22' };
+    }
+  };
+  S.routes = {
+    '/api/soundfiles': function () { return PST.json(S.soundFiles()); },
+    '/api/soundlib': function () { return PST.json(S.soundLib()); },
+    '/api/sound': function (q, b) {
+      var d = PST.parseBody(b), id = +d.id, s = soundCfg(id);
+      if (!s) return PST.json({ error: 'bad request' }, 400);
+      if (d.test) { PST.note((id ? 'Sound ' + id : 'Motor') + ' wird abgespielt (simuliert).'); return PST.json({ ok: true }); }
+      ['source', 'vol', 'mode'].forEach(function (k) { if (d[k] != null) s[k] = +d[k]; });
+      if (id === 0) {
+        if (d.motor_mode != null) C.motor.mode = +d.motor_mode;
+        ['speed_src', 'toggle', 'rpm_min', 'rpm_max', 'shutdown_s', 'ramp', 'deadband'].forEach(function (k) { if (d[k] != null) C.motor[k] = +d[k]; });
+      }
+      return PST.json({ ok: true });
+    },
+    '/api/soundmap': function (q, b) {
+      var d = PST.parseBody(b), i = slotOf(d.slot);
+      if (i < 0) return PST.json({ error: 'bad request' }, 400);
+      C.sound_files[SLOTS[i]] = d.file || '';
+      return PST.json({ ok: true });
+    },
+    '/api/soundupload': function (q) {
+      var n = q.name || 'neu.wav';
+      if (!/^[A-Za-z0-9_\-]+\.wav$/i.test(n)) return PST.json({ ok: false, error: 'bad_name' }, 400);
+      var existed = !!fsize(n);
+      files = files.filter(function (f) { return f.name !== n; }); files.push({ name: n, size: 48000 });
+      if (q.slot && slotOf(q.slot) >= 0) C.sound_files[q.slot] = n;
+      return PST.json({ ok: true, existed: existed, file: n });
+    },
+    '/api/sounddelete': function (q) { files = files.filter(function (f) { return f.name !== q.name; }); return PST.json({ ok: true }); },
+    '/api/sdexport': function () {
+      var n = 'config_' + ('000' + (backups.length + 1)).slice(-4) + '_v' + String(o.version || '').replace('.', '') + '.json';
+      backups.push({ name: n, size: JSON.stringify(C).length, data: JSON.parse(JSON.stringify(C)) });
+      return PST.json({ ok: true, file: 'backup/' + n });
+    },
+    '/api/sdlist': function () { return PST.json({ ok: true, files: backups.map(function (b) { return { name: b.name, size: b.size }; }) }); },
+    '/api/sdconfig': function (q) {
+      var b = backups.filter(function (x) { return x.name === q.file; })[0];
+      if (!b) return PST.json({ ok: false, error: 'not_found' }, 404);
+      return PST.json(b.data || C);
+    },
+    '/api/sddelete': function (q) { backups = backups.filter(function (x) { return x.name !== q.file; }); return PST.json({ ok: true }); },
+    '/sport': function () { return PST.json(S.sportJson()); }
+  };
+  // ── Lua (Motor, Sounds, Sound-Zuordnung) ──
+  function src(i) { return soundCfg(i).source; }
+  function setSrc(i, v) { soundCfg(i).source = v; }
+  function typ(c) { if (c === 999) return 8; if (c === 200) return 7; if (c >= 80 && c <= 95) return 6; if (c >= 70 && c <= 77) return 5;
+    if (c >= 60 && c <= 65) return 4; if (c >= 50 && c <= 55) return 3; if (c >= 40 && c <= 45) return 2; if (c >= 20 && c <= 35) return 1; if (c >= 0 && c <= 15) return 0; return 8; }
+  function nr(c) { var B = [[80, 95], [70, 77], [60, 65], [50, 55], [40, 45], [20, 35], [0, 15]];
+    for (var i = 0; i < B.length; i++) if (c >= B[i][0] && c <= B[i][1]) return c - B[i][0] + 1; return 1; }
+  function setEin(t, n) { var i = n > 0 ? n - 1 : 0, base = [0, 20, 40, 50, 60, 70, 80], lim = [15, 15, 5, 5, 5, 7, 15];
+    if (t <= 6) return base[t] + Math.min(i, lim[t]); return t === 7 ? 200 : 999; }
+  function selVal(c) { var t = typ(c); if (pins()) return t; if (t >= 2 && t <= 4) return 5; return t === 5 ? 2 : t === 6 ? 3 : t === 7 ? 4 : t >= 8 ? 5 : t; }
+  function selWrite(v, old) { var t = pins() ? v : ([0, 1, 5, 6, 7, 8][v] != null ? [0, 1, 5, 6, 7, 8][v] : 8); return setEin(t, nr(old)); }
+  function maxNr(t) { return t === 0 || t === 1 ? 16 : t >= 2 && t <= 4 ? 6 : t === 5 ? 8 : t === 6 ? 16 : 1; }
+  function lock(v) { if (v.value < 1 || v.value > 16) v.value = 1; v.min = v.max = v.value; v.hidden = true; }
+  function srcText(cfg) { var N = ['L', 'H', 'PWM-L', 'PWM-H', 'Pin', 'EK', 'MKan', 'Dauer', 'Aus'], t = typ(cfg);
+    if (!pins() && t >= 2 && t <= 4) t = 8; return t <= 6 ? N[t] + ' ' + nr(cfg) : N[t]; }
+  function spdTyp(c) { return c >= 0 && c <= 15 ? 0 : c >= 20 && c <= 25 ? 1 : 2; }
+  function spdNr(c) { return c >= 0 && c <= 15 ? c + 1 : c >= 20 && c <= 25 ? c - 19 : 1; }
+  function setSpd(t, n) { var i = n > 0 ? n - 1 : 0; return t === 0 ? Math.min(i, 15) : t === 1 ? 20 + Math.min(i, 5) : 999; }
+  function chView(s, v) { var t = typ(src(s)); if (t === 7 || t === 8 || (!pins() && t >= 2 && t <= 4)) lock(v); else v.max = maxNr(t); }
+  var sndSel = 1, mapSlot = 3;
+  function fileList() {
+    var cur = C.sound_files[SLOTS[mapSlot]], names = [];
+    if (cur) names.push(cur);
+    files.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (f) { if (f.name.toLowerCase() !== String(cur).toLowerCase()) names.push(f.name); });
+    return names;
+  }
+  function shortName(n) { var s = n.replace(/\.wav$/i, ''); return s.length > 12 ? s.slice(0, 11) + '~' : s; }
+  var M = C.motor;
+  S.srcText = srcText;
+  S.lua = {
+    get: {
+      luaGetThrottleMode: function () { return M.mode; }, luaGetToggle: function () { return M.toggle; },
+      luaGetMinSpeed: function () { return M.rpm_min; }, luaGetMaxSpeed: function () { return Math.max(50, Math.min(255, M.rpm_max >> 1)); },
+      luaGetShutdown: function () { return M.shutdown_s; }, luaGetRamp: function () { return M.ramp; }, luaGetDeadBand: function () { return M.deadband; },
+      luaGetSpdSrc: function () { var t = spdTyp(M.speed_src); return !pins() ? (t === 0 ? 0 : 1) : t; },
+      luaGetSpdChannel: function () { return spdNr(M.speed_src); },
+      luaGetSource: function (s) { return selVal(src(s)); }, luaGetChannel: function (s) { return nr(src(s)); },
+      luaGetVolume: function (s) { return soundCfg(s).vol; }, luaGetPlayMode: function (s) { return soundCfg(s).mode; },
+      luaGetSndNr: function () { return sndSel - 1; }, luaGetZero: function () { return 0; }, luaGetSndZero: function () { return 0; },
+      luaGetSelSource: function () { return selVal(src(sndSel)); }, luaGetSelChannel: function () { return nr(src(sndSel)); },
+      luaGetSelVolume: function () { return soundCfg(sndSel).vol; }, luaGetSelPlayMode: function () { return soundCfg(sndSel).mode; },
+      luaGetSelTest: function () { return testOn[sndSel] ? 1 : 0; },
+      luaGetMapSlot: function () { return mapSlot; }, luaGetMapFile: function () { return C.sound_files[SLOTS[mapSlot]] ? 1 : 0; }
+    },
+    set: {
+      luaSetThrottleMode: function (a, v) { M.mode = v; }, luaSetToggle: function (a, v) { M.toggle = v; },
+      luaSetMinSpeed: function (a, v) { M.rpm_min = v; }, luaSetMaxSpeed: function (a, v) { M.rpm_max = Math.max(100, Math.min(510, v * 2)); },
+      luaSetShutdown: function (a, v) { M.shutdown_s = v; }, luaSetRamp: function (a, v) { M.ramp = v; }, luaSetDeadBand: function (a, v) { M.deadband = v; },
+      luaSetSpdSrc: function (a, v) { var t = !pins() && v === 1 ? 2 : v; M.speed_src = setSpd(t, spdNr(M.speed_src)); },
+      luaSetSpdChannel: function (a, v) { M.speed_src = setSpd(spdTyp(M.speed_src), v); },
+      luaSetSource: function (s, v) { setSrc(s, selWrite(v, src(s))); }, luaSetChannel: function (s, v) { setSrc(s, setEin(typ(src(s)), v)); },
+      luaSetVolume: function (s, v) { soundCfg(s).vol = v; }, luaSetPlayMode: function (s, v) { soundCfg(s).mode = v; },
+      luaSetSndNr: function (a, v) { sndSel = v + 1; },
+      luaSetSelSource: function (a, v) { setSrc(sndSel, selWrite(v, src(sndSel))); }, luaSetSelChannel: function (a, v) { setSrc(sndSel, setEin(typ(src(sndSel)), v)); },
+      luaSetSelVolume: function (a, v) { soundCfg(sndSel).vol = v; }, luaSetSelPlayMode: function (a, v) { soundCfg(sndSel).mode = v; },
+      luaSetSelTest: function (a, v) { testOn[sndSel] = v === 1; if (v) PST.note('Sound ' + sndSel + ' wird abgespielt (simuliert).'); },
+      luaSetMapSlot: function (a, v) { mapSlot = v; },
+      luaSetMapFile: function (a, v) { var l = fileList(); C.sound_files[SLOTS[mapSlot]] = v === 0 ? '' : (l[v - 1] || ''); }
+    },
+    views: {
+      luaShowMotorFolder: function (it, v) { v.name = 'Motor (' + srcText(M.source) + ')'; },
+      luaShowSource: function (it, v) { v.text = pins() ? 'L;H;PWM-L;PWM-H;Pin;EK;MKan;Dauer;Aus' : 'L;H;EK;MKan;Dauer;Aus'; },
+      luaShowSpdSrc: function (it, v) { v.text = pins() ? 'BUS Kanal;PWM Pin;Deaktiviert' : 'BUS Kanal;Deaktiviert'; },
+      luaShowSpdChannel: function (it, v) { var t = spdTyp(M.speed_src); if (t === 2 || (!pins() && t === 1)) lock(v); else v.max = t === 1 ? 6 : 16; },
+      luaShowChannel: function (it, v) { chView(it.arg, v); },
+      luaShowSelChannel: function (it, v) { chView(sndSel, v); },
+      luaShowSndName: function (it, v) { var f = (C.sound_files[String(sndSel)] || '').replace(/\.wav$/i, ''); v.text = f ? f.slice(0, 20) : '(leer)'; v.max = 0; v.value = 0; },
+      luaViewMapFile: function (it, v) { var l = fileList(); v.text = ['(leer)'].concat(l.map(shortName)).join(';'); v.max = l.length; v.value = C.sound_files[SLOTS[mapSlot]] ? 1 : 0; },
+      luaShowMapSize: function (it, v) { var f = C.sound_files[SLOTS[mapSlot]]; v.text = !f ? '-' : (fsize(f) ? Math.ceil(fsize(f) / 1024) + ' KB' : 'Datei fehlt'); v.max = 0; }
+    }
+  };
+  return S;
+};
+
+// Simulierter CRSF-Router8 (Firmware RC_CRSF_Router_RP2350). Keine
+// Weboberflaeche, nur das Lua-Menue. Startwerte wie cfgDefaults()
+// (router_config.cpp), Port-Anzahl, Namen und Pins aus dem Code.
+PST.register('mock_router8', function (variant, ctx) {
+  var K = ctx.variant.consts || {}, N = K.PORT_COUNT || 7;
+  function fresh() {
+    var c = { moduleAddr: 15, voltMode: 0, voltCorr: 0, tempSend: 0, ledRgb: 1, baud: [], rc: [], ls: [], tele: [] };
+    for (var i = 0; i < N; i++) { c.baud.push(K.PORT_BAUD_DEFAULT); c.rc.push(1); c.ls.push(1); c.tele.push(0); }
+    return c;
+  }
+  var c = fresh(), boot = JSON.parse(JSON.stringify(c)), restart = 0;
+  // Beispiel: an Port 1 und 2 haengt je ein Modul
+  var DEV = [['RC-Multiswitch@0'], ['Sound-Mini@1'], [], [], [], [], []];
+  var t0 = Date.now();
+  function cnt(a) { var t = (Date.now() - t0) / 1000; return [Math.round(t * 150), Math.round(t * 24), 0, Math.round(t * 3), 0][a]; }
+  var lua = {
+    get: {
+      luaGetPort: function (a) { return c.baud[a]; }, luaGetRc: function (a) { return c.rc[a]; }, luaGetLs: function (a) { return c.ls[a]; },
+      luaGetTele: function (a) { return c.tele[a]; }, luaGetAddr: function () { return c.moduleAddr; },
+      luaGetVMode: function () { return c.voltMode; }, luaGetVCorr: function () { return c.voltCorr + 5; }, luaGetTSend: function () { return c.tempSend; },
+      luaGetLed: function () { return c.ledRgb; }, luaGetSearch: function () { return 0; }, luaGetRestart: function () { return restart; }
+    },
+    set: {
+      luaSetPort: function (a, v) { c.baud[a] = v; }, luaSetRc: function (a, v) { c.rc[a] = v; }, luaSetLs: function (a, v) { c.ls[a] = v; },
+      luaSetTele: function (a, v) { c.tele[a] = v; }, luaSetAddr: function (a, v) { c.moduleAddr = v; },
+      luaSetVMode: function (a, v) { c.voltMode = v; }, luaSetVCorr: function (a, v) { c.voltCorr = v - 5; }, luaSetTSend: function (a, v) { c.tempSend = v; },
+      luaSetLed: function (a, v) { c.ledRgb = v; },
+      luaSetSearch: function (a, v) { if (v) PST.note('Geräte werden gesucht (simuliert).'); },
+      luaSetRestart: function (a, v) { if (v) { restart = 1; setTimeout(function () { restart = 0; PST.reboot(); }, 300); } }
+    },
+    views: {
+      luaShowVersion: function (it, v) { v.text = ctx.variant.version; },
+      luaShowName: function (it, v) { v.text = K.DEVICE_NAME; },
+      luaViewVCorr: function (it, v) { if (!c.voltMode) v.hidden = true; },
+      luaShowVolt: function (it, v) { v.text = (c.voltMode ? 7.84 + c.voltCorr / 10 : 0).toFixed(2) + ' V'; },
+      luaShowTemp: function (it, v) { v.text = '38.2 C'; },
+      luaShowCount: function (it, v) { v.text = String(cnt(it.arg)); },
+      luaShowDup: function (it, v) { v.text = 'nein'; },
+      luaShowPorts: function (it, v) { var s = []; for (var i = 0; i < N; i++) s.push(!boot.baud[i] ? '-' : DEV[i].length ? String(i + 1) : '.'); v.text = s.join(' '); },
+      luaShowDevices: function (it, v) { var i = it.arg; v.text = !boot.baud[i] ? 'aus' : DEV[i].length ? DEV[i].join(', ') : 'kein Geraet'; }
+    }
+  };
+  return {
+    handle: function () { return null; }, get: lua.get, set: lua.set, views: lua.views,
+    deviceName: function () { return K.DEVICE_NAME; },
+    reboot: function () { boot = JSON.parse(JSON.stringify(c)); },
+    hw: function () {
+      var r = [['Board', 'Waveshare RP2350-Zero'], ['Eingang', 'RX ' + K.PIN_UPLINK_RX + ' / TX ' + K.PIN_UPLINK_TX]];
+      for (var i = 1; i <= N; i++) r.push(['Port ' + i, 'RX ' + K['PIN_P' + i + '_RX'] + ' / TX ' + K['PIN_P' + i + '_TX']]);
+      return r.concat([['Status-LED', 'GPIO ' + K.PIN_STATUS_LED], ['Spannungsmessung', 'GPIO ' + K.PIN_VSENSE]]);
+    }
+  };
+});
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var frame = $('frame');
+  var cur = null;            // {fw, v, mod, lua}
+  var cache = {};            // Modul-Zustand je Firmware/Variante bleibt beim Umschalten erhalten
+  var luaPath = [0], luaSel = null;
+
+  var SHIM = '(' + function () {
+    var P = parent.PST;
+    function route(m, u, b) { return P.request(m, u, b); }
+    window.fetch = function (u, o) {
+      o = o || {}; var m = (o.method || 'GET').toUpperCase();
+      var body = o.body; if (body && typeof body !== 'string') body = (body instanceof URLSearchParams) ? body.toString() : body;
+      var r = route(m, String(u), body);
+      return new Promise(function (res) { setTimeout(function () { res({ ok: r.status < 400, status: r.status,
+        json: function () { return Promise.resolve(JSON.parse(r.text)); }, text: function () { return Promise.resolve(r.text); },
+        headers: { get: function () { return null; } } }); }, 25); });
+    };
+    function X() { this.readyState = 0; this.status = 0; this.responseText = ''; this.upload = {}; this._h = {}; }
+    X.prototype.open = function (m, u) { this._m = String(m).toUpperCase(); this._u = String(u); this.readyState = 1; };
+    X.prototype.setRequestHeader = function () {};
+    X.prototype.addEventListener = function (e, f) { this['on' + e] = f; };
+    X.prototype.getResponseHeader = function () { return null; };
+    X.prototype.abort = function () {};
+    X.prototype.send = function (b) { var s = this, file = b && typeof b !== 'string';
+      setTimeout(function () { if (file && s.upload.onprogress) s.upload.onprogress({ lengthComputable: true, loaded: 1, total: 1 });
+        var r = route(s._m, s._u, file ? b : b); s.status = r.status; s.responseText = r.text; s.response = r.text; s.readyState = 4;
+        if (s.onreadystatechange) s.onreadystatechange(); if (s.onload) s.onload({ target: s }); }, file ? 300 : 30); };
+    window.XMLHttpRequest = X;
+    window.confirm = function () { return true; };
+    window.alert = function (m) { P.note(m); };
+    window.prompt = function (m, d) { return d || ''; };
+    window.EventSource = function () { this.close = function () {}; };
+    window.WebSocket = function () { this.close = function () {}; this.send = function () {}; };
+    var rl = location.reload; try { location.reload = function () { P.reloadPage(); }; } catch (e) {}
+  }.toString() + ')();';
+
+  PST.request = function (method, url, body) {
+    var u = String(url).replace(/^https?:\/\/[^/]+/, '');
+    var q = {}, path = u, i = u.indexOf('?');
+    if (i >= 0) { path = u.slice(0, i); u.slice(i + 1).split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) q[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); }); }
+    var r = null;
+    try { r = cur.mod.handle(method, path, q, body); } catch (e) { r = { status: 500, text: 'Simulation: ' + e.message }; console.error(e); }
+    if (!r) r = { status: 404, text: 'Nicht simuliert: ' + method + ' ' + path };
+    if (method !== 'GET' || r.status >= 400) {
+      PST.logList.unshift({ method: method, url: path + (i >= 0 ? url.slice(url.indexOf('?')) : ''), body: (body && typeof body !== 'string') ? '(Datei)' : body, status: r.status });
+      if (PST.logList.length > 40) PST.logList.length = 40;
+      renderLog();
+    }
+    if (cur.mod.after) cur.mod.after(method, path);
+    setTimeout(renderLua, 50);
+    return r;
+  };
+  PST.reloadPage = function () { loadPage(); };
+  PST.reboot = function () { reboot(); };
+
+  function loadPage() {
+    var fw = cur.fw;
+    if (!fw.page) { frame.srcdoc = '<p style="font-family:sans-serif;padding:20px">Diese Firmware hat keine Weboberfläche.</p>'; return; }
+    var p = fw.page, k = p.search(/<head[^>]*>/i);
+    var inj = '<script>' + SHIM + '<\/script>';
+    frame.srcdoc = k >= 0 ? p.slice(0, k) + p.slice(k).replace(/<head[^>]*>/i, function (m) { return m + inj; }) : inj + p;
+    $('addr').textContent = '192.168.4.1 · ' + fw.name + ' v' + (cur.v.version || '?') + ' · ' + cur.v.name;
+  }
+  function reboot() {
+    $('boot').hidden = false; $('dot').classList.add('busy');
+    setTimeout(function () { if (cur.mod.reboot) cur.mod.reboot(); loadPage(); luaPath = [0]; luaSel = null; renderLua(); renderHw();
+      $('boot').hidden = true; $('dot').classList.remove('busy'); }, 900);
+  }
+
+  // ── Lua ─────────────────────────────────────────────────────────────
+  function items() { return cur.v.items; }
+  function byId(id) { var r = null; items().forEach(function (it) { if (it.id === id) r = it; }); return r; }
+  function luaView(it) {
+    var M = cur.mod, v = { type: it.type, name: it.name, text: it.text, min: it.min || 0, max: it.max || 0, unit: it.unit || '', hidden: false, value: 0 };
+    if (it.type === 'select') v.max = Math.max(0, (it.text || '').split(';').length - 1);
+    v.value = luaGet(it);
+    if (it.view === 'luaHideAlways') v.hidden = true;
+    var vf = it.view && M.views && M.views[it.view];
+    if (vf) { try { vf(it, v); } catch (e) { console.error(e); } }
+    else if (it.view && it.view !== 'luaHideAlways') v.sim = false;
+    if (v.type === 'select') v.max = Math.max(0, (v.text || '').split(';').length - 1);
+    return v;
+  }
+  function luaGet(it) {
+    var M = cur.mod, f = it.get && M.get && M.get[it.get];
+    if (f) { try { return f(it.arg, it); } catch (e) { console.error(e); } }
+    if (cur.lua[it.id] != null) return cur.lua[it.id];
+    return it.type === 'u8' ? (it.min || 0) : 0;
+  }
+  function luaSet(it, val) {
+    var M = cur.mod, f = it.set && M.set && M.set[it.set];
+    if (f) { try { f(it.arg, val, it); } catch (e) { console.error(e); } }
+    else cur.lua[it.id] = val;
+    PST.logList.unshift({ method: 'LUA', url: 'Feld ' + it.id + ' „' + it.name + '“ = ' + val, body: '', status: 200 });
+    renderLog();
+  }
+  function children(pid) { return items().filter(function (it) { return it.parent === pid && it.id !== pid; }); }
+  function renderLua() {
+    if (!cur) return;
+    var lcd = $('lcd'), pid = luaPath[luaPath.length - 1], showHid = $('show-hidden').checked;
+    var folder = byId(pid), M = cur.mod;
+    lcd.innerHTML = '';
+    var hd = document.createElement('div'); hd.className = 'hd';
+    var a = document.createElement('span'); a.textContent = pid === 0 ? (M.deviceName ? M.deviceName() : cur.fw.name) : luaView(folder).name;
+    var b = document.createElement('span'); b.textContent = pid === 0 ? 'v' + (cur.v.version || '') : '';
+    hd.appendChild(a); hd.appendChild(b); lcd.appendChild(hd);
+    var shown = 0;
+    children(pid).forEach(function (it) {
+      var v = luaView(it);
+      if (v.hidden && !showHid) return;
+      shown++;
+      var row = document.createElement('button'); row.type = 'button'; row.className = 'it' + (v.hidden ? ' hid' : '');
+      row.setAttribute('role', 'listitem');
+      var n = document.createElement('span'), val = document.createElement('span'); val.className = 'v';
+      if (v.type === 'folder') { n.textContent = '> ' + v.name; }
+      else {
+        n.textContent = v.name;
+        if (v.type === 'info') { val.textContent = v.text || (it.view ? '…' : ''); row.classList.add('ro'); }
+        else if (v.type === 'select') { var o = (v.text || '').split(';'); val.textContent = it.runtime && !v.text ? '(zur Laufzeit)' : (o[v.value] != null ? o[v.value] : '?'); }
+        else { val.textContent = v.value + (v.unit ? ' ' + v.unit : ''); }
+        if ((v.type === 'u8' && v.min === v.max) || it.ro) row.classList.add('ro');
+      }
+      row.title = 'Feld ' + it.id + (it.view ? ' · Anzeige: ' + it.view + (M.views && M.views[it.view] ? '' : ' (nicht simuliert)') : '');
+      row.appendChild(n); row.appendChild(val);
+      row.addEventListener('click', function () {
+        if (v.type === 'folder') { luaPath.push(it.id); luaSel = null; renderLua(); return; }
+        if (row.classList.contains('ro')) return;
+        luaSel = luaSel === it.id ? null : it.id; renderLua();
+      });
+      lcd.appendChild(row);
+      if (luaSel === it.id) lcd.appendChild(editor(it, v));
+    });
+    if (!shown) { var e = document.createElement('div'); e.className = 'it ro'; e.textContent = '(leer)'; lcd.appendChild(e); }
+  }
+  function editor(it, v) {
+    var ed = document.createElement('div'); ed.className = 'ed';
+    if (v.type === 'select') {
+      var box = document.createElement('div'); box.className = 'opts';
+      (v.text || '').split(';').forEach(function (o, i) {
+        var bt = document.createElement('button'); bt.type = 'button'; bt.textContent = o; if (i === v.value) bt.className = 'on';
+        bt.addEventListener('click', function () { luaSet(it, i); luaSel = null; renderLua(); });
+        box.appendChild(bt);
+      });
+      ed.appendChild(box);
+    } else {
+      var w = document.createElement('div'); w.className = 'num';
+      var minus = document.createElement('button'); minus.type = 'button'; minus.textContent = '−';
+      var inp = document.createElement('input'); inp.type = 'number'; inp.min = v.min; inp.max = v.max; inp.value = v.value;
+      inp.setAttribute('aria-label', it.name);
+      var plus = document.createElement('button'); plus.type = 'button'; plus.textContent = '+';
+      var ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'OK';
+      var rng = document.createElement('span'); rng.textContent = v.min + '…' + v.max;
+      function clamp(x) { x = parseInt(x, 10); if (isNaN(x)) x = v.min; return Math.max(v.min, Math.min(v.max, x)); }
+      minus.addEventListener('click', function () { inp.value = clamp(+inp.value - 1); });
+      plus.addEventListener('click', function () { inp.value = clamp(+inp.value + 1); });
+      ok.addEventListener('click', function () { luaSet(it, clamp(inp.value)); luaSel = null; renderLua(); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ok.click(); });
+      [minus, inp, plus, ok, rng].forEach(function (x) { w.appendChild(x); });
+      ed.appendChild(w);
+    }
+    return ed;
+  }
+  $('lua-back').addEventListener('click', function () { if (luaPath.length > 1) luaPath.pop(); luaSel = null; renderLua(); });
+  $('lua-reload').addEventListener('click', function () { luaSel = null; renderLua(); });
+  $('show-hidden').addEventListener('change', renderLua);
+
+  function renderTable() {
+    var tb = $('tbl'); tb.innerHTML = '';
+    var names = {}; items().forEach(function (it) { names[it.id] = it.name; });
+    items().slice().sort(function (a, b) { return a.id - b.id; }).forEach(function (it) {
+      var tr = document.createElement('tr');
+      var range = it.type === 'u8' ? it.min + '…' + it.max + (it.unit ? ' ' + it.unit : '') : (it.type === 'folder' ? '' : (it.runtime ? '(zur Laufzeit)' : (it.text || '')));
+      [[it.id, 'n'], [it.id === 0 ? '' : (names[it.parent] || 'Hauptmenü') + ' (' + it.parent + ')', ''],
+       [{ folder: 'Ordner', info: 'Info', u8: 'Zahl', select: 'Auswahl' }[it.type] + (it.ro ? ', nur lesen' : ''), ''],
+       [it.name, ''], [range, 'o'], [it.view || '', 'o']].forEach(function (c) {
+        var td = document.createElement('td'); td.textContent = c[0]; if (c[1]) td.className = c[1]; tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    $('tbl-sum').textContent = 'Alle Lua-Felder (' + (items().length - 1) + ' ohne Hauptmenü, höchste ID ' + Math.max.apply(null, items().map(function (i) { return i.id; }).concat([0])) + ')';
+    $('tbl-card').hidden = !items().length;
+  }
+  function renderLog() {
+    var el = $('log'); el.innerHTML = '';
+    if (!PST.logList.length) { el.innerHTML = '<li class="empty">Noch nichts gesendet.</li>'; return; }
+    PST.logList.slice(0, 25).forEach(function (e) {
+      var li = document.createElement('li'), m = document.createElement('span'); m.className = 'm';
+      m.textContent = e.method + ' ' + e.url + (e.status >= 400 ? '  → ' + e.status : '');
+      li.appendChild(m);
+      if (e.body) { li.appendChild(document.createElement('br')); li.appendChild(document.createTextNode(String(e.body).slice(0, 400))); }
+      el.appendChild(li);
+    });
+  }
+  function renderHw() {
+    var rows = cur.mod.hw ? cur.mod.hw() : null, dl = $('hw'); dl.innerHTML = '';
+    $('hw-card').hidden = !rows || !rows.length;
+    (rows || []).forEach(function (r) { var dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = r[0]; dd.textContent = r[1]; dl.appendChild(dt); dl.appendChild(dd); });
+  }
+  var noteT = 0;
+  PST.onNote = function (m) { var n = $('note'); n.textContent = m; n.hidden = false; clearTimeout(noteT); noteT = setTimeout(function () { n.hidden = true; }, 6000); };
+
+  function select(fi, vi) {
+    var fw = DATA.firmwares[fi], v = fw.variants[vi], key = fw.id + '/' + v.id;
+    if (!cache[key]) {
+      var fac = PST.mocks[fw.mock.replace(/\.js$/, '')] || PST.mocks[fw.id];
+      cache[key] = { mod: fac ? fac(v.id, { firmware: fw, variant: v }) : { handle: function () { return null; } }, lua: {} };
+    }
+    cur = { fw: fw, v: v, mod: cache[key].mod, lua: cache[key].lua };
+    document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', t.dataset.k === key ? 'true' : 'false'); });
+    luaPath = [0]; luaSel = null;
+    loadPage(); renderLua(); renderTable(); renderHw(); renderLog();
+    var errs = v.lua_errors || [];
+    $('lua-err').hidden = !errs.length; $('lua-err').textContent = errs.join(' · ');
+    $('lua-hint').textContent = v.items.length
+      ? (v.hint ? v.hint + ' ' : '') + 'Feldnamen, Nummern und Auswahllisten kommen aus dem Code. Werte und Texte, die erst im Modul entstehen, sind simuliert.'
+      : 'Diese Firmware hat kein Lua-Menü.';
+    try { localStorage.setItem('pst-sel', key); } catch (e) {}
+  }
+  var tabs = $('tabs'), start = null, saved = null;
+  try { saved = localStorage.getItem('pst-sel'); } catch (e) {}
+  DATA.firmwares.forEach(function (fw, fi) {
+    fw.variants.forEach(function (v, vi) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'tab'; b.setAttribute('role', 'tab');
+      b.dataset.k = fw.id + '/' + v.id;
+      b.innerHTML = '<span></span><small></small>';
+      b.firstChild.textContent = DATA.firmwares.length > 1 ? fw.name + ' · ' + v.name : v.name;
+      b.lastChild.textContent = 'v' + (v.version || '?') + (v.items.length ? ' · ' + (v.items.length - 1) + ' Lua-Felder' : '');
+      b.addEventListener('click', function () { select(fi, vi); });
+      tabs.appendChild(b);
+      if (!start || b.dataset.k === saved) start = [fi, vi];
+      if (b.dataset.k === saved) saved = 'x';
+    });
+  });
+  $('reload').addEventListener('click', loadPage);
+  $('reboot').addEventListener('click', reboot);
+  $('foot').textContent = 'Erzeugt mit pruefstand/build.py ' + DATA.build + (DATA.firmwares[0].rc_common ? ' · RC_Common ' + DATA.firmwares[0].rc_common : '') + '. Neu bauen: python3 pruefstand/build.py';
+  select(start[0], start[1]);
+})();
+</script>
+</body>
+</html>
